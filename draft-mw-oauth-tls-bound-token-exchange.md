@@ -195,7 +195,7 @@ An authorization server that supports TLS-session-bound token exchange MUST incl
 ~~~json
 {
   "cnf": {
-    "x5t#S256": "<base64url SHA-256 thumbprint of client certificate>",
+    "x5t#S256": "<cert-thumbprint>",
     "tls_bound": true
   }
 }
