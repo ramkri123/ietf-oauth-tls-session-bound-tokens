@@ -47,20 +47,11 @@ organization = "Aryaka"
   [author.address]
   email = "srinivasa.addepalli@aryaka.com"
 
-
-[[contributor]]
-initials = "B."
-surname = "Malepati"
-fullname = "Bala Siva Sai Akhil Malepati"
-organization = "Independent"
-  [contributor.address]
-  email = "saiakhil2012@yahoo.com"
-
 %%%
 
 .# Abstract
 
-This document defines a mechanism for binding OAuth 2.0 access tokens issued via the Token Exchange protocol {{!RFC8693}} to a specific mutual TLS (mTLS) session. The binding is achieved through a per-request proof token that incorporates the TLS Exporter value {{!RFC5705}} derived from the current session, a timestamp, and an access token hash, all signed by the client's private key corresponding to its mTLS certificate. This mechanism prevents stolen bearer tokens from being replayed on a different TLS session, addressing a critical security gap amplified by the emergence of autonomous **AI Agents** that perform chained, multi-hop token exchanges without human oversight.
+This document defines a mechanism for binding OAuth 2.0 access tokens issued via the Token Exchange protocol {{!RFC8693}} to a specific mutual TLS (mTLS) session. The binding is achieved through a per-request proof token that incorporates the TLS Exporter value {{!RFC5705}} derived from the current session and an access token hash, signed by the client's private key corresponding to its mTLS certificate. This mechanism prevents stolen bearer tokens from being replayed on a different TLS session, addressing a critical security gap in environments with autonomous, multi-hop token delegation.
 
 {mainmatter}
 
@@ -112,7 +103,7 @@ Token Exchange:
 This specification defines a proof-of-possession mechanism that binds OAuth 2.0 access tokens to the mTLS session on which they are presented. The mechanism operates as follows:
 
 1.  The client and resource server establish an mTLS connection. Both sides derive a TLS Exporter value unique to this session.
-2.  When presenting an access token, the client constructs a **Session-Binding Proof**: a JWT containing the hash of the access token, the TLS Exporter value, the HTTP method and URI of the request, and a timestamp.
+2.  When presenting an access token, the client constructs a **Session-Binding Proof**: a JWT containing the hash of the access token, the TLS Exporter value, and the HTTP method and URI of the request.
 3.  The client signs this JWT with the private key corresponding to its mTLS client certificate.
 4.  The resource server verifies the proof by checking the signature against the client certificate's public key, confirming the exporter value matches the current session, validating the timestamp, and verifying the token hash matches the presented access token.
 
@@ -154,10 +145,9 @@ The `alg` value MUST match the key type of the client's mTLS certificate. The `x
   "jti": "<unique identifier>",
   "ath": "<base64url SHA-256 hash of the access token>",
   "ekm": "<base64url TLS Exporter value>",
-  "ts": 1710820000,
+  "iat": 1710820000,
   "htm": "POST",
-  "htu": "/api/resource",
-  "iat": 1710820000
+  "htu": "/api/resource"
 }
 ~~~
 
@@ -172,17 +162,14 @@ ath:
 ekm:
 : REQUIRED. The base64url-encoded TLS Exporter value derived as specified in (#tls-exporter-derivation).
 
-ts:
-: REQUIRED. A timestamp representing the time of proof creation, as a NumericDate (seconds since the Unix epoch). The value MUST be within an acceptable clock skew window of the server's current time.
+iat:
+: REQUIRED. The time at which the proof was issued, as a NumericDate (seconds since the Unix epoch). The resource server MUST verify that this value is within an acceptable clock skew window.
 
 htm:
 : REQUIRED. The HTTP method of the request to which the proof is attached (e.g., "GET", "POST").
 
 htu:
 : REQUIRED. The HTTP target URI of the request to which the proof is attached, without query and fragment parts.
-
-iat:
-: REQUIRED. The time at which the proof was issued, as a NumericDate.
 
 ### Signature
 
@@ -238,7 +225,7 @@ The following diagram illustrates the complete flow:
    |      jti: <unique-id>,                             |
    |      ath: SHA256(access_token),                    |
    |      ekm: EKM,                                    |
-   |      ts:  <unix_timestamp>,                        |
+   |      iat: <unix_timestamp>,                        |
    |      htm: "POST",                                  |
    |      htu: "/api/resource"                          |
    |    }                                               |
@@ -246,13 +233,13 @@ The following diagram illustrates the complete flow:
    |                                                    |
    |--- HTTP Request --------------------------------->|
    |    Authorization: Bearer <access_token>            |
-   |    Token-Binding-Proof: <proof_jwt>                |
+   |    Session-Binding-Proof: <proof_jwt>              |
    |                                                    |
    |  Server verifies:                                  |
    |    1. sig matches C.publicKey from mTLS            |
    |    2. ath matches SHA256(access_token)              |
    |    3. ekm matches server-derived EKM               |
-   |    4. ts within acceptable skew window              |
+   |    4. iat within acceptable skew window              |
    |    5. htm/htu match actual request                  |
    |    6. jti not previously seen                       |
    |                                                    |
@@ -266,7 +253,7 @@ When the client presents the access token to a resource server:
 3.  The client constructs a Session-Binding Proof JWT as specified in (#session-binding-proof-format).
 4.  The client sends the HTTP request with:
     *   The access token in the `Authorization` header: `Authorization: Bearer <access_token>`
-    *   The Session-Binding Proof in the `Token-Binding-Proof` header: `Token-Binding-Proof: <proof_jwt>`
+    *   The Session-Binding Proof in the `Session-Binding-Proof` header: `Session-Binding-Proof: <proof_jwt>`
 
 5.  The resource server performs the following verifications:
 
@@ -277,7 +264,7 @@ When the client presents the access token to a resource server:
     e.  **Proof signature**: Verifies the proof JWT signature against the public key in the client certificate.
     f.  **Exporter match**: Derives the TLS Exporter value for the current session and confirms it matches the `ekm` claim in the proof.
     g.  **Token hash**: Computes SHA-256 of the presented access token and confirms it matches the `ath` claim.
-    h.  **Timestamp**: Confirms `ts` is within the acceptable skew window.
+    h.  **Timestamp**: Confirms `iat` is within the acceptable skew window.
     i.  **Method and URI**: Confirms `htm` and `htu` match the actual request.
     j.  **Uniqueness**: Confirms the `jti` has not been seen before within the token's validity period.
 
@@ -295,9 +282,9 @@ This specification extends RFC 8705 by adding session-level binding on top of ce
 
 ## Relationship to RFC 9449 (DPoP)
 
-DPoP and this specification address similar goals (proof-of-possession) but target different deployment models:
+DPoP and this specification address similar goals (proof-of-possession) but use different mechanisms and binding targets:
 
-*   **DPoP**: Designed for public clients that cannot use mTLS. Uses ephemeral keys.
+*   **DPoP**: Applicable to both public and confidential clients. Particularly valuable for public clients that cannot use mTLS. Uses ephemeral, application-managed keys not bound to the TLS layer.
 *   **This specification**: Designed for confidential clients and workloads that already use mTLS. Reuses the existing mTLS certificate and adds TLS channel binding.
 
 In environments where both mTLS and DPoP are available, this specification provides stronger security guarantees because it binds to both the client identity (certificate) and the transport session (exporter).
@@ -346,7 +333,7 @@ The backend resource server MUST use the forwarded exporter value (instead of it
 
 ### Cross-Session Replay
 
-The TLS Exporter value is cryptographically derived from the TLS handshake and is unique per session. An attacker who intercepts a bearer token cannot replay it on a different TLS session because the exporter value will not match.
+The TLS Exporter value is cryptographically derived from the TLS handshake transcript and is unique per TLS connection. An attacker who intercepts a bearer token cannot replay it on a different TLS connection because the exporter value will not match. Note that TLS 1.3 is RECOMMENDED, as TLS 1.2 session resumption via abbreviated handshakes may reuse the same master secret across connections.
 
 ### Cross-Host Replay
 
@@ -397,9 +384,9 @@ This specification registers the following confirmation method in the IANA "OAut
 
 This specification registers the following HTTP header fields:
 
-### Token-Binding-Proof
+### Session-Binding-Proof
 
-*   **Header Field Name**: `Token-Binding-Proof`
+*   **Header Field Name**: `Session-Binding-Proof`
 *   **Status**: permanent
 *   **Reference**: [this document]
 
