@@ -226,19 +226,21 @@ The following diagram illustrates the complete flow:
 ~~~
  Client (with cert C)                          Resource Server
    |                                                    |
-   |--- mTLS handshake (client cert C) --------------->|
+   |=== mTLS handshake (client cert C) ================>|
    |                                                    |
+   |  [ONCE PER CONNECTION]                              |
    |  Both sides derive:                                |
    |    EKM = TLS-Exporter(                             |
    |      "EXPORTER-oauth-tls-session-bound",            |
    |      "", 32)                                       |
    |                                                    |
+   |  [PER HTTP REQUEST]                                 |
    |  Client constructs proof JWT:                      |
    |    header = { typ, alg, x5t#S256 }                 |
    |    payload = {                                     |
    |      jti: <unique-id>,                             |
    |      ath: SHA256(access_token),                    |
-   |      ekm: EKM,                                    |
+   |      ekm: EKM,       (cached from handshake)       |
    |      iat: <unix_timestamp>,                        |
    |      htm: "POST",                                  |
    |      htu: "/api/resource"                          |
@@ -249,16 +251,26 @@ The following diagram illustrates the complete flow:
    |    Authorization: Bearer <access_token>            |
    |    Session-Binding-Proof: <proof_jwt>              |
    |                                                    |
-   |  Server verifies:                                  |
+   |  Server verifies:          [PER HTTP REQUEST]       |
    |    1. sig matches C.publicKey from mTLS            |
    |    2. ath matches SHA256(access_token)              |
-   |    3. ekm matches server-derived EKM               |
+   |    3. ekm matches server-derived EKM (cached)       |
    |    4. iat within acceptable skew window              |
    |    5. htm/htu match actual request                  |
    |    6. jti not previously seen                       |
    |                                                    |
    |<-- 200 OK ----------------------------------------|
 ~~~
+
+### Performance Characteristics
+
+This mechanism is designed for minimal per-request overhead compared to alternative proof-of-possession schemes:
+
+*   **TLS Exporter derivation** is performed **once per mTLS connection** and cached. This is a single call to the TLS library, typically O(1) after the handshake completes.
+*   **Proof construction and verification** are performed **per HTTP request**, consisting of one JWT sign (client) and one JWT verify (server). The signing key is the client's existing mTLS private key—no additional key generation is required.
+*   **No separate key management**: Unlike DPoP, which requires generating, storing, and rotating an ephemeral key pair independent of TLS, this specification reuses the mTLS key pair already established during the handshake. This eliminates an entire key lifecycle from the implementation.
+
+The net per-request cost is one JWT signature (client-side) and one JWT verification plus one SHA-256 hash and one string comparison for the EKM (server-side)—comparable to DPoP but without the additional key management overhead.
 
 When the client presents the access token to a resource server:
 
@@ -317,10 +329,10 @@ This specification extends RFC 8705 by adding session-level binding on top of ce
 
 DPoP and this specification address similar goals (proof-of-possession) but use different mechanisms and binding targets:
 
-*   **DPoP**: Applicable to both public and confidential clients. Particularly valuable for public clients that cannot use mTLS. Uses ephemeral, application-managed keys not bound to the TLS layer.
-*   **This specification**: Designed for confidential clients and workloads that already use mTLS. Reuses the existing mTLS certificate and adds TLS channel binding.
+*   **DPoP**: Applicable to both public and confidential clients. Particularly valuable for public clients that cannot use mTLS. Uses ephemeral, application-managed keys not bound to the TLS layer. Requires independent key generation, storage, and rotation.
+*   **This specification**: Designed for confidential clients and workloads that already use mTLS. Reuses the existing mTLS certificate key pair (no additional key management) and adds TLS channel binding via the Exporter value.
 
-In environments where both mTLS and DPoP are available, this specification provides stronger security guarantees because it binds to both the client identity (certificate) and the transport session (exporter).
+In environments where both mTLS and DPoP are available, this specification provides stronger security guarantees because it binds to both the client identity (certificate) and the transport connection (exporter), while imposing less implementation complexity by eliminating the need for a separate proof-of-possession key pair.
 
 ## Relationship to WIMSE WIT/WPT
 
