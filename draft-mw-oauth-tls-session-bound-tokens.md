@@ -93,7 +93,7 @@ TLS Exporter Value:
 : A value derived from the TLS handshake using the mechanism defined in {{!RFC5705}} (for TLS 1.2) or Section 7.5 of {{!RFC8446}} (for TLS 1.3). The exporter value is unique to the specific TLS connection and is available to both endpoints.
 
 Session-Binding Proof:
-: A signed JWT presented alongside the access token that cryptographically binds the token to the current mTLS session via the TLS Exporter value.
+: A signed JWT presented alongside the access token that cryptographically binds the token to the current mTLS connection via the TLS Exporter value.
 
 Token Exchange:
 : The protocol defined in {{!RFC8693}} for exchanging one security token for another at an authorization server.
@@ -275,7 +275,7 @@ The net per-request cost is one JWT signature (client-side) and one JWT verifica
 When the client presents the access token to a resource server:
 
 1.  The client establishes an mTLS connection with the resource server.
-2.  The client derives the TLS Exporter value for the current session.
+2.  The client derives the TLS Exporter value for the current connection (this value is computed once per connection and cached).
 3.  The client constructs a Session-Binding Proof JWT as specified in (#session-binding-proof-format).
 4.  The client sends the HTTP request with:
     *   The access token in the `Authorization` header: `Authorization: Bearer <access_token>`
@@ -288,7 +288,7 @@ When the client presents the access token to a resource server:
     c.  **Certificate binding**: Verifies that the `x5t#S256` in the token's `cnf` claim matches the presented client certificate.
     d.  **TLS binding required**: Checks that `cnf.tls_exp` is present and a Session-Binding Proof is present.
     e.  **Proof signature**: Verifies the proof JWT signature against the public key in the client certificate.
-    f.  **Exporter match**: Derives the TLS Exporter value for the current session and confirms it matches the `ekm` claim in the proof.
+    f.  **Exporter match**: Compares the `ekm` claim in the proof against the TLS Exporter value for the current connection (derived once and cached) and confirms they match.
     g.  **Token hash**: Computes SHA-256 of the presented access token and confirms it matches the `ath` claim.
     h.  **Timestamp**: Confirms `iat` is within the acceptable skew window.
     i.  **Method and URI**: Confirms `htm` and `htu` match the actual request.
@@ -312,7 +312,7 @@ WWW-Authenticate: Bearer error="invalid_proof",
 The following error code values are defined:
 
 invalid_proof:
-: The Session-Binding Proof is missing, malformed, or failed verification. This includes signature verification failure, exporter mismatch, expired `iat`, and `htm`/`htu` mismatch.
+: The Session-Binding Proof is malformed or failed verification. This includes signature verification failure, exporter mismatch, expired `iat`, `jti` reuse, `ath` mismatch, and `htm`/`htu` mismatch.
 
 use_session_binding:
 : The access token requires a Session-Binding Proof (the `cnf.tls_exp` claim is present) but no `Session-Binding-Proof` header was provided. This error signals to the client that it must construct and present a proof.
@@ -344,7 +344,7 @@ The Transitive Attestation profile {{!I-D.draft-mw-wimse-transitive-attestation}
 
 ## Relationship to RFC 8693 (Token Exchange)
 
-This specification does not modify the token exchange protocol itself. The authorization server's token exchange endpoint continues to operate as specified in {{!RFC8693}}. The session binding is applied to the *resulting* access token through the `cnf` claim. While this specification is applicable to any OAuth 2.0 access token, RFC 8693 Token Exchange is a primary motivator: each hop in a delegation chain produces a new bearer token, and session binding contains the blast radius of any single token compromise to the specific TLS connection on which it was issued.
+This specification does not modify the token exchange protocol itself. The authorization server's token exchange endpoint continues to operate as specified in {{!RFC8693}}. The session binding is applied to the *resulting* access token through the `cnf` claim. While this specification is applicable to any OAuth 2.0 access token, RFC 8693 Token Exchange is a primary motivator: each hop in a delegation chain produces a new bearer token, and session binding contains the blast radius of any single token compromise to the specific TLS connection on which it is presented.
 
 # TLS Proxy Considerations
 
@@ -551,7 +551,6 @@ This architecture provides defense-in-depth against agentic AI threat vectors:
 ## Relationship to Existing Infrastructure
 
 This deployment model aligns with the service mesh architecture used in SPIFFE/SPIRE environments, where the sidecar already manages workload identity certificates. When combined with Transitive Attestation {{!I-D.draft-mw-wimse-transitive-attestation}}, the sidecar can additionally attest that the agent is running in a verified execution environment while simultaneously binding all tokens to the active TLS connection.
-
 
 
 <reference anchor="RFC2119" target="https://www.rfc-editor.org/rfc/rfc2119">
