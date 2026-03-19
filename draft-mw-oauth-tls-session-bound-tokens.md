@@ -51,7 +51,7 @@ organization = "Aryaka"
 
 .# Abstract
 
-This document defines a mechanism for binding OAuth 2.0 access tokens to a specific mutual TLS (mTLS) session. The binding is achieved through a proof token that incorporates the TLS Exporter value {{!RFC5705}} derived from the current connection and an access token hash, signed by the client's private key corresponding to its mTLS certificate. This mechanism prevents stolen bearer tokens from being replayed on a different TLS connection. The proof is constructed once per (token, connection) pair and reused across all requests on that connection, delivering session binding with no per-request signing overhead and no additional key management beyond what mTLS already provides. While applicable to any OAuth 2.0 access token presented over mTLS, this specification is primarily motivated by the Token Exchange protocol {{!RFC8693}}, where multi-hop delegation chains in autonomous, agent-driven architectures create elevated replay risk.
+This document defines a mechanism for binding OAuth 2.0 access tokens to a specific mutual TLS (mTLS) session. The binding is achieved through a proof token that incorporates the TLS Exporter value [@!RFC5705] derived from the current connection and an access token hash, signed by the client's private key corresponding to its mTLS certificate. This mechanism prevents stolen bearer tokens from being replayed on a different TLS connection. The proof is constructed once per (token, connection) pair and reused across all requests on that connection, delivering session binding with no per-request signing overhead and no additional key management beyond what mTLS already provides. While applicable to any OAuth 2.0 access token presented over mTLS, this specification is primarily motivated by the Token Exchange protocol [@!RFC8693], where multi-hop delegation chains in autonomous, agent-driven architectures create elevated replay risk.
 
 {mainmatter}
 
@@ -59,14 +59,14 @@ This document defines a mechanism for binding OAuth 2.0 access tokens to a speci
 
 ## The Bearer Token Replay Problem
 
-OAuth 2.0 access tokens are typically **bearer tokens**: any party in possession of the token can use it to access protected resources, regardless of the presenter's identity or the communication channel. This is a known risk addressed by the OAuth 2.0 Security Best Current Practice {{!I-D.ietf-oauth-security-topics}}.
+OAuth 2.0 access tokens are typically **bearer tokens**: any party in possession of the token can use it to access protected resources, regardless of the presenter's identity or the communication channel. This is a known risk addressed by the OAuth 2.0 Security Best Current Practice [@I-D.ietf-oauth-security-topics].
 
-The Token Exchange protocol {{!RFC8693}} amplifies this risk by enabling chained delegation across service boundaries. Each exchange produces a new bearer token, and a compromise at any point in the chain exposes downstream tokens.
+The Token Exchange protocol [@!RFC8693] amplifies this risk by enabling chained delegation across service boundaries. Each exchange produces a new bearer token, and a compromise at any point in the chain exposes downstream tokens.
 
 Existing mitigations address parts of this problem:
 
-*   **RFC 8705 (mTLS Certificate-Bound Tokens)** {{!RFC8705}}: Binds the token to the client's X.509 certificate thumbprint. However, the binding is to the *certificate identity*, not the *TLS connection*. If the same certificate is used across connections, or if the certificate and token are both exfiltrated, the token remains replayable.
-*   **RFC 9449 (DPoP)** {{!RFC9449}}: Provides application-layer proof-of-possession using ephemeral, application-managed keys. Applicable to both public and confidential clients, but binds to the key, not to the TLS channel, and requires generating and managing a separate key pair.
+*   **RFC 8705 (mTLS Certificate-Bound Tokens)** [@!RFC8705]: Binds the token to the client's X.509 certificate thumbprint. However, the binding is to the *certificate identity*, not the *TLS connection*. If the same certificate is used across connections, or if the certificate and token are both exfiltrated, the token remains replayable.
+*   **RFC 9449 (DPoP)** [@!RFC9449]: Provides application-layer proof-of-possession using ephemeral, application-managed keys. Applicable to both public and confidential clients, but binds to the key, not to the TLS channel, and requires generating and managing a separate key pair.
 *   **Token Binding (RFC 8471-8473)**: Proposed direct TLS session binding but required a new TLS extension, was never specified for Token Exchange, encountered adoption barriers in browsers and TLS 1.3 transitions, and was ultimately abandoned.
 
 None of these mechanisms provide **TLS-connection-level binding** for OAuth 2.0 access tokens in mTLS environments. This specification fills that gap by reusing the existing mTLS key pair (no additional key generation) and amortizing the proof to once per (token, connection) pair rather than once per request — delivering stronger binding than DPoP at lower per-request cost.
@@ -85,24 +85,24 @@ These characteristics make bearer token replay a **first-order threat** in agent
 
 ## Conventions and Terminology
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in BCP 14 {{!RFC2119}} {{!RFC8174}} when, and only when, they appear in all capitals, as shown here.
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in BCP 14 [@!RFC2119] [@!RFC8174] when, and only when, they appear in all capitals, as shown here.
 
 This document uses the following terms:
 
 TLS Exporter Value:
-: A value derived from the TLS handshake using the mechanism defined in {{!RFC5705}} (for TLS 1.2) or Section 7.5 of {{!RFC8446}} (for TLS 1.3). The exporter value is unique to the specific TLS connection and is available to both endpoints.
+: A value derived from the TLS handshake using the mechanism defined in [@!RFC5705] (for TLS 1.2) or Section 7.5 of [@!RFC8446] (for TLS 1.3). The exporter value is unique to the specific TLS connection and is available to both endpoints.
 
 Session-Binding Proof:
 : A signed JWT presented alongside the access token that cryptographically binds the token to the current mTLS connection via the TLS Exporter value.
 
 Token Exchange:
-: The protocol defined in {{!RFC8693}} for exchanging one security token for another at an authorization server.
+: The protocol defined in [@!RFC8693] for exchanging one security token for another at an authorization server.
 
 # TLS Session Binding for Access Tokens
 
 ## Overview
 
-This specification defines a proof-of-possession mechanism that binds OAuth 2.0 access tokens to the mTLS connection on which they are presented. While applicable to any OAuth 2.0 access token, it is primarily designed for tokens issued via the Token Exchange protocol {{!RFC8693}}, where multi-hop delegation creates elevated replay risk. The mechanism operates as follows:
+This specification defines a proof-of-possession mechanism that binds OAuth 2.0 access tokens to the mTLS connection on which they are presented. While applicable to any OAuth 2.0 access token, it is primarily designed for tokens issued via the Token Exchange protocol [@!RFC8693], where multi-hop delegation creates elevated replay risk. The mechanism operates as follows:
 
 1.  The client and resource server establish an mTLS connection. Both sides derive a TLS Exporter value unique to this connection.
 2.  When presenting an access token on a new connection, the client constructs a **Session-Binding Proof**: a JWT containing the hash of the access token and the TLS Exporter value.
@@ -119,7 +119,7 @@ Both the client and resource server MUST derive the TLS Exporter value using the
 *   **Context**: Empty (zero-length)
 *   **Length**: 32 octets
 
-For TLS 1.3, the exporter is derived as specified in Section 7.5 of {{!RFC8446}}. For TLS 1.2, the exporter is derived as specified in {{!RFC5705}}. TLS 1.3 is RECOMMENDED because TLS 1.2 abbreviated handshakes (session resumption) may reuse the same master secret across connections, weakening the binding.
+For TLS 1.3, the exporter is derived as specified in Section 7.5 of [@!RFC8446]. For TLS 1.2, the exporter is derived as specified in [@!RFC5705]. TLS 1.3 is RECOMMENDED because TLS 1.2 abbreviated handshakes (session resumption) may reuse the same master secret across connections, weakening the binding.
 
 Note: By binding to the TLS Exporter rather than the application traffic keys, the binding remains valid across TLS 1.3 `KeyUpdate` operations. Standard key rotation refreshes traffic keys but does not change the exporter master secret, avoiding unnecessary re-proof cycles while maintaining strong connection binding.
 
@@ -137,7 +137,7 @@ The Session-Binding Proof is a JWT with the following structure:
 }
 ~~~
 
-The `alg` value MUST match the key type of the client's mTLS certificate. The `x5t#S256` value MUST be the base64url-encoded SHA-256 thumbprint of the DER-encoded client certificate, as defined in {{!RFC8705}}.
+The `alg` value MUST match the key type of the client's mTLS certificate. The `x5t#S256` value MUST be the base64url-encoded SHA-256 thumbprint of the DER-encoded client certificate, as defined in [@!RFC8705].
 
 ### Payload
 
@@ -198,10 +198,10 @@ An authorization server that supports TLS-session-bound access tokens MUST inclu
 ~~~
 
 x5t#S256:
-: REQUIRED. The certificate thumbprint as defined in {{!RFC8705}}.
+: REQUIRED. The certificate thumbprint as defined in [@!RFC8705].
 
 tls_exp:
-: REQUIRED. A string value containing the TLS Exporter label that the client and resource server MUST use to derive the session-binding value. The presence of this claim signals that the resource server MUST require and verify a Session-Binding Proof whenever this token is presented. This follows the pattern of existing `cnf` members which carry key/binding material rather than boolean flags (see {{!RFC7800}}).
+: REQUIRED. A string value containing the TLS Exporter label that the client and resource server MUST use to derive the session-binding value. The presence of this claim signals that the resource server MUST require and verify a Session-Binding Proof whenever this token is presented. This follows the pattern of existing `cnf` members which carry key/binding material rather than boolean flags (see [@!RFC7800]).
 
 # Protocol Flow
 
@@ -209,7 +209,7 @@ tls_exp:
 
 The mechanism for requesting and issuing TLS-session-bound tokens is as follows:
 
-1.  The client authenticates to the authorization server using mTLS and requests a token. This MAY be a token exchange per {{!RFC8693}}, a client credentials grant, or any other OAuth 2.0 grant type.
+1.  The client authenticates to the authorization server using mTLS and requests a token. This MAY be a token exchange per [@!RFC8693], a client credentials grant, or any other OAuth 2.0 grant type.
 2.  The authorization server issues a new access token.
 3.  If the authorization server policy requires TLS session binding for this client, it includes the `cnf` claim with `tls_exp` set to the exporter label in the issued token.
 4.  The client receives the token and notes the `tls_exp` requirement.
@@ -316,7 +316,7 @@ When the client presents the access token to a resource server:
 
 ## Token Introspection Considerations
 
-When token introspection {{!RFC7662}} is used, the introspection response MUST include the `cnf` claim with the `tls_exp` field. This allows resource servers that do not have direct access to the token's claims (e.g., opaque tokens) to determine whether session binding is required.
+When token introspection [@!RFC7662] is used, the introspection response MUST include the `cnf` claim with the `tls_exp` field. This allows resource servers that do not have direct access to the token's claims (e.g., opaque tokens) to determine whether session binding is required.
 
 ## Error Responses
 
@@ -365,15 +365,15 @@ In summary, for mTLS-capable environments, this specification provides stronger 
 
 ## Relationship to WIMSE WIT/WPT
 
-The WIMSE Workload Identity Token (WIT) and Workload Proof Token (WPT) defined in {{!I-D.ietf-wimse-s2s-protocol}} provide a similar proof-of-possession mechanism for workload-to-workload communication. This specification is compatible with WIMSE and can be used in conjunction with WIT/WPT when mTLS-based session binding is required for tokens obtained via RFC 8693 exchange.
+The WIMSE Workload Identity Token (WIT) and Workload Proof Token (WPT) defined in [@I-D.ietf-wimse-s2s-protocol] provide a similar proof-of-possession mechanism for workload-to-workload communication. This specification is compatible with WIMSE and can be used in conjunction with WIT/WPT when mTLS-based session binding is required for tokens obtained via RFC 8693 exchange.
 
 ## Relationship to Transitive Attestation
 
-The Transitive Attestation profile {{!I-D.draft-mw-wimse-transitive-attestation}} addresses a complementary problem: binding an identity to a verified execution environment ("Proof of Residency"). While this specification binds tokens to a TLS connection to prevent network-level replay, Transitive Attestation binds identities to a hardware-rooted host to prevent credential export. In high-assurance deployments, both mechanisms MAY be combined: Transitive Attestation ensures the token is used from the correct host, and TLS session binding ensures it is used on the correct connection.
+The Transitive Attestation profile [@I-D.draft-mw-wimse-transitive-attestation] addresses a complementary problem: binding an identity to a verified execution environment ("Proof of Residency"). While this specification binds tokens to a TLS connection to prevent network-level replay, Transitive Attestation binds identities to a hardware-rooted host to prevent credential export. In high-assurance deployments, both mechanisms MAY be combined: Transitive Attestation ensures the token is used from the correct host, and TLS session binding ensures it is used on the correct connection.
 
 ## Relationship to RFC 8693 (Token Exchange)
 
-This specification does not modify the token exchange protocol itself. The authorization server's token exchange endpoint continues to operate as specified in {{!RFC8693}}. The session binding is applied to the *resulting* access token through the `cnf` claim. While this specification is applicable to any OAuth 2.0 access token, RFC 8693 Token Exchange is a primary motivator: each hop in a delegation chain produces a new bearer token, and session binding contains the blast radius of any single token compromise to the specific TLS connection on which it is presented.
+This specification does not modify the token exchange protocol itself. The authorization server's token exchange endpoint continues to operate as specified in [@!RFC8693]. The session binding is applied to the *resulting* access token through the `cnf` claim. While this specification is applicable to any OAuth 2.0 access token, RFC 8693 Token Exchange is a primary motivator: each hop in a delegation chain produces a new bearer token, and session binding contains the blast radius of any single token compromise to the specific TLS connection on which it is presented.
 
 # TLS Proxy Considerations
 
@@ -385,7 +385,7 @@ In deployments where TLS is terminated at the application server (pass-through m
 
 When a TLS-terminating proxy (e.g., a load balancer or API gateway) sits between the client and the resource server, the proxy MUST forward the following information to the backend:
 
-1.  The client certificate or its thumbprint, as specified in {{!RFC9440}}.
+1.  The client certificate or its thumbprint, as specified in [@!RFC9440].
 2.  The TLS Exporter value derived from the client-to-proxy mTLS session.
 
 A new HTTP header is defined for conveying the exporter value:
@@ -402,7 +402,7 @@ The backend resource server MUST use the forwarded exporter value (instead of it
 
 # Security Considerations
 
-This section addresses security considerations in addition to those described in the OAuth 2.0 Security Best Current Practice {{!I-D.ietf-oauth-security-topics}}.
+This section addresses security considerations in addition to those described in the OAuth 2.0 Security Best Current Practice [@I-D.ietf-oauth-security-topics].
 
 ## Threat Model
 
@@ -456,7 +456,7 @@ If the client's mTLS private key is compromised, the attacker can produce valid 
 
 *   Hardware-backed key storage (TPM, HSM, TEE).
 *   Short-lived certificates (e.g., SPIFFE SVIDs with 1-hour expiry).
-*   Transitive Attestation {{!I-D.draft-mw-wimse-transitive-attestation}} for binding identity to a verified execution context.
+*   Transitive Attestation [@I-D.draft-mw-wimse-transitive-attestation] for binding identity to a verified execution context.
 
 ### TLS Proxy Trust
 
@@ -466,7 +466,7 @@ The `TLS-Exporter` header introduces a trust dependency on the proxy. A compromi
 
 ## OAuth Token Confirmation Methods
 
-This specification registers the following confirmation method in the IANA "OAuth Token Confirmation Methods" registry established by {{!RFC7800}}:
+This specification registers the following confirmation method in the IANA "OAuth Token Confirmation Methods" registry established by [@!RFC7800]:
 
 *   **Confirmation Method Value**: `tls_exp`
 *   **Confirmation Method Description**: TLS Exporter Session Binding
@@ -597,7 +597,8 @@ This architecture provides defense-in-depth against agentic AI threat vectors:
 
 ## Relationship to Existing Infrastructure
 
-This deployment model aligns with the service mesh architecture used in SPIFFE/SPIRE environments, where the sidecar already manages workload identity certificates. When combined with Transitive Attestation {{!I-D.draft-mw-wimse-transitive-attestation}}, the sidecar can additionally attest that the agent is running in a verified execution environment while simultaneously binding all tokens to the active TLS connection.
+This deployment model aligns with the service mesh architecture used in SPIFFE/SPIRE environments, where the sidecar already manages workload identity certificates. When combined with Transitive Attestation [@I-D.draft-mw-wimse-transitive-attestation], the sidecar can additionally attest that the agent is running in a verified execution environment while simultaneously binding all tokens to the active TLS connection.
+
 
 <reference anchor="RFC2119" target="https://www.rfc-editor.org/rfc/rfc2119">
   <front>
@@ -606,6 +607,8 @@ This deployment model aligns with the service mesh architecture used in SPIFFE/S
     <date month="March" year="1997"/>
   </front>
 </reference>
+
+
 
 <reference anchor="RFC7800" target="https://www.rfc-editor.org/rfc/rfc7800">
   <front>
@@ -616,6 +619,8 @@ This deployment model aligns with the service mesh architecture used in SPIFFE/S
     <date month="April" year="2016"/>
   </front>
 </reference>
+
+
 
 <reference anchor="I-D.ietf-oauth-security-topics" target="https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics">
   <front>
@@ -628,6 +633,8 @@ This deployment model aligns with the service mesh architecture used in SPIFFE/S
   </front>
 </reference>
 
+
+
 <reference anchor="RFC5705" target="https://www.rfc-editor.org/rfc/rfc5705">
   <front>
     <title>Keying Material Exporters for Transport Layer Security (TLS)</title>
@@ -635,6 +642,8 @@ This deployment model aligns with the service mesh architecture used in SPIFFE/S
     <date month="March" year="2010"/>
   </front>
 </reference>
+
+
 
 <reference anchor="RFC7662" target="https://www.rfc-editor.org/rfc/rfc7662">
   <front>
@@ -644,6 +653,8 @@ This deployment model aligns with the service mesh architecture used in SPIFFE/S
   </front>
 </reference>
 
+
+
 <reference anchor="RFC8174" target="https://www.rfc-editor.org/rfc/rfc8174">
   <front>
     <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
@@ -652,6 +663,8 @@ This deployment model aligns with the service mesh architecture used in SPIFFE/S
   </front>
 </reference>
 
+
+
 <reference anchor="RFC8446" target="https://www.rfc-editor.org/rfc/rfc8446">
   <front>
     <title>The Transport Layer Security (TLS) Protocol Version 1.3</title>
@@ -659,6 +672,8 @@ This deployment model aligns with the service mesh architecture used in SPIFFE/S
     <date month="August" year="2018"/>
   </front>
 </reference>
+
+
 
 <reference anchor="RFC8693" target="https://www.rfc-editor.org/rfc/rfc8693">
   <front>
@@ -672,6 +687,8 @@ This deployment model aligns with the service mesh architecture used in SPIFFE/S
   </front>
 </reference>
 
+
+
 <reference anchor="RFC8705" target="https://www.rfc-editor.org/rfc/rfc8705">
   <front>
     <title>OAuth 2.0 Mutual-TLS Client Authentication and Certificate-Bound Access Tokens</title>
@@ -683,6 +700,8 @@ This deployment model aligns with the service mesh architecture used in SPIFFE/S
   </front>
 </reference>
 
+
+
 <reference anchor="RFC9440" target="https://www.rfc-editor.org/rfc/rfc9440">
   <front>
     <title>Client-Cert HTTP Header Field</title>
@@ -691,6 +710,8 @@ This deployment model aligns with the service mesh architecture used in SPIFFE/S
     <date month="July" year="2023"/>
   </front>
 </reference>
+
+
 
 <reference anchor="RFC9449" target="https://www.rfc-editor.org/rfc/rfc9449">
   <front>
@@ -705,6 +726,8 @@ This deployment model aligns with the service mesh architecture used in SPIFFE/S
   </front>
 </reference>
 
+
+
 <reference anchor="I-D.ietf-wimse-s2s-protocol" target="https://datatracker.ietf.org/doc/html/draft-ietf-wimse-s2s-protocol">
   <front>
     <title>WIMSE Service to Service Authentication</title>
@@ -713,6 +736,8 @@ This deployment model aligns with the service mesh architecture used in SPIFFE/S
   </front>
 </reference>
 
+
+
 <reference anchor="I-D.draft-mw-wimse-transitive-attestation" target="https://datatracker.ietf.org/doc/html/draft-mw-wimse-transitive-attestation">
   <front>
     <title>Transitive Attestation for Sovereign Workloads: A WIMSE Profile</title>
@@ -720,3 +745,4 @@ This deployment model aligns with the service mesh architecture used in SPIFFE/S
     <date month="March" year="2026"/>
   </front>
 </reference>
+
