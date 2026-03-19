@@ -1,6 +1,6 @@
 %%%
 title = "TLS-Session-Bound Access Tokens for OAuth 2.0"
-abbrev = "TLS-Bound-TokenExchange"
+abbrev = "TLS-Session-Bound-Tokens"
 category = "std"
 docName = "draft-mw-oauth-tls-session-bound-tokens-00"
 ipr = "trust200902"

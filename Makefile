@@ -19,7 +19,7 @@ txt: $(DRAFT).txt
 html: $(DRAFT).html
 xml: $(DRAFT).xml
 
-$(DRAFT).xml: draft-mw-oauth-tls-bound-token-exchange.md
+$(DRAFT).xml: draft-mw-oauth-tls-session-bound-tokens.md
 	$(MMARK) $< > $@
 
 $(DRAFT).txt: $(DRAFT).xml
