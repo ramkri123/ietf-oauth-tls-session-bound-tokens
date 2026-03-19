@@ -51,7 +51,7 @@ organization = "Aryaka"
 
 .# Abstract
 
-This document defines a mechanism for binding OAuth 2.0 access tokens to a specific mutual TLS (mTLS) session. The binding is achieved through a per-request proof token that incorporates the TLS Exporter value {{!RFC5705}} derived from the current session and an access token hash, signed by the client's private key corresponding to its mTLS certificate. This mechanism prevents stolen bearer tokens from being replayed on a different TLS connection. By reusing the existing mTLS key pair and amortizing the TLS Exporter derivation across all requests on a connection, the mechanism adds session binding with minimal per-request overhead and no additional key management. While applicable to any OAuth 2.0 access token presented over mTLS, this specification is primarily motivated by the Token Exchange protocol {{!RFC8693}}, where multi-hop delegation chains in autonomous, agent-driven architectures create elevated replay risk.
+This document defines a mechanism for binding OAuth 2.0 access tokens to a specific mutual TLS (mTLS) session. The binding is achieved through a per-request proof token that incorporates the TLS Exporter value {{!RFC5705}} derived from the current connection and an access token hash, signed by the client's private key corresponding to its mTLS certificate. This mechanism prevents stolen bearer tokens from being replayed on a different TLS connection. Because the mechanism reuses the existing mTLS key pair, it requires no additional key generation or management beyond what mTLS already provides. While applicable to any OAuth 2.0 access token presented over mTLS, this specification is primarily motivated by the Token Exchange protocol {{!RFC8693}}, where multi-hop delegation chains in autonomous, agent-driven architectures create elevated replay risk.
 
 {mainmatter}
 
@@ -69,7 +69,7 @@ Existing mitigations address parts of this problem:
 *   **RFC 9449 (DPoP)** {{!RFC9449}}: Provides application-layer proof-of-possession using ephemeral, application-managed keys. Applicable to both public and confidential clients, but binds to the key, not to the TLS channel, and requires generating and managing a separate key pair.
 *   **Token Binding (RFC 8471-8473)**: Proposed direct TLS session binding but required a new TLS extension, was never specified for Token Exchange, encountered adoption barriers in browsers and TLS 1.3 transitions, and was ultimately abandoned.
 
-None of these mechanisms provide **TLS-connection-level binding** for OAuth 2.0 access tokens in mTLS environments. This specification fills that gap while reusing the existing mTLS key infrastructure—requiring no additional key generation—and amortizing the costly channel-binding derivation to once per connection rather than once per request.
+None of these mechanisms provide **TLS-connection-level binding** for OAuth 2.0 access tokens in mTLS environments. This specification fills that gap while reusing the existing mTLS key infrastructure, requiring no additional key generation or management beyond what mTLS already provides.
 
 ## The Agentic AI Amplifier
 
@@ -264,13 +264,11 @@ The following diagram illustrates the complete flow:
 
 ### Performance Characteristics
 
-This mechanism is designed for minimal per-request overhead compared to alternative proof-of-possession schemes:
+The per-request cost of this mechanism is comparable to DPoP: one JWT signature (client-side) and one JWT verification plus one SHA-256 hash and one string comparison for the EKM (server-side). The key differences from DPoP are:
 
-*   **TLS Exporter derivation** is performed **once per mTLS connection** and cached. This is a single call to the TLS library, typically O(1) after the handshake completes.
-*   **Proof construction and verification** are performed **per HTTP request**, consisting of one JWT sign (client) and one JWT verify (server). The signing key is the client's existing mTLS private key—no additional key generation is required.
+*   **TLS Exporter derivation** is performed **once per mTLS connection** and cached by both sides. This is a single call to the TLS library after the handshake completes; the resulting value is reused for all subsequent requests on that connection.
 *   **No separate key management**: Unlike DPoP, which requires generating, storing, and rotating an ephemeral key pair independent of TLS, this specification reuses the mTLS key pair already established during the handshake. This eliminates an entire key lifecycle from the implementation.
-
-The net per-request cost is one JWT signature (client-side) and one JWT verification plus one SHA-256 hash and one string comparison for the EKM (server-side)—comparable to DPoP but without the additional key management overhead.
+*   **Proof construction and verification** are performed **per HTTP request**, as each proof includes request-specific claims (`jti`, `iat`, `htm`, `htu`). This is the same per-request cost as DPoP.
 
 When the client presents the access token to a resource server:
 
