@@ -107,7 +107,7 @@ This specification defines a proof-of-possession mechanism that binds OAuth 2.0 
 1.  The client and resource server establish an mTLS connection. Both sides derive a TLS Exporter value unique to this connection.
 2.  When presenting an access token on a new connection, the client constructs a **Session-Binding Proof**: a JWT containing the hash of the access token and the TLS Exporter value.
 3.  The client signs this JWT with the private key corresponding to its mTLS client certificate. The same proof MAY be reused for all subsequent requests using that token on the same connection.
-4.  The resource server verifies the proof by checking the signature against the client certificate's public key, confirming the exporter value matches the current connection, and confirming the token hash matches the presented access token. The server MUST perform these checks on every request but MAY use a per-connection cache to reduce subsequent verifications to a cache lookup.
+4.  The resource server verifies the proof by checking the signature against the client certificate's public key, confirming the exporter value matches the current connection, confirming the token hash matches the presented access token, and confirming the issuance time is within an acceptable window. The server MUST perform these checks on every request but MAY use a per-connection cache to reduce subsequent verifications to a cache lookup.
 
 A token that requires session binding includes a confirmation method claim (`tls_exp`) containing the TLS Exporter label, which signals to the resource server that the Session-Binding Proof MUST be presented and verified.
 
@@ -201,7 +201,7 @@ x5t#S256:
 : REQUIRED. The certificate thumbprint as defined in {{!RFC8705}}.
 
 tls_exp:
-: REQUIRED. A string value containing the TLS Exporter label that the client and resource server MUST use to derive the session-binding value. The presence of this claim signals that the resource server MUST require a Session-Binding Proof when the token is first presented on a connection. This follows the pattern of existing `cnf` members which carry key/binding material rather than boolean flags (see {{!RFC7800}}).
+: REQUIRED. A string value containing the TLS Exporter label that the client and resource server MUST use to derive the session-binding value. The presence of this claim signals that the resource server MUST require and verify a Session-Binding Proof whenever this token is presented. This follows the pattern of existing `cnf` members which carry key/binding material rather than boolean flags (see {{!RFC7800}}).
 
 # Protocol Flow
 
@@ -278,7 +278,7 @@ The following diagram illustrates the complete flow:
 
 ### Performance Characteristics
 
-Because the Session-Binding Proof requires only connection-level claims (`ekm`, `ath`) and does not contain request-specific data, the client constructs and signs the proof **once per (token, connection) pair** and reuses it for all subsequent requests. This provides a significant advantage over DPoP:
+Because the Session-Binding Proof contains only connection-level claims (`ekm`, `ath`, `iat`), the client constructs and signs the proof **once per (token, connection) pair** and reuses it for all subsequent requests on that connection. The `iat` value reflects the time of proof construction, not the time of any particular request. This provides a significant advantage over DPoP:
 
 *   **Proof construction (client-side)**: One JWT signature per connection per token. DPoP requires one JWT signature per request.
 *   **Proof verification (server-side)**: Full JWT verification on first presentation; the server MAY cache the verified `(connection, ath)` binding and reduce subsequent verifications to a cache lookup. DPoP requires full JWT verification per request.
@@ -308,9 +308,9 @@ When the client presents the access token to a resource server:
     h.  **Timestamp**: Confirms `iat` is within an acceptable window.
     i.  **Per-request claims** (when present): Confirms `htm` and `htu` match the actual request, and `jti` has not been seen before.
 
-    The resource server MUST perform steps (a) through (g) on every request. This is critical: an attacker who obtains a stolen token and proof may attempt to inject them on their own mTLS connection. Per-request verification ensures the proof signature is checked against the certificate from *this* connection's handshake, which will not match the attacker's certificate.
+    The resource server MUST ensure that steps (a) through (h) are satisfied for every request. This is critical: an attacker who obtains a stolen token and proof may attempt to inject them on their own mTLS connection to the same resource server. Verification ensures the proof signature is checked against the certificate from *this* connection's handshake, which will not match the attacker's certificate.
 
-    To optimize, the resource server MAY cache verified bindings keyed on `(connection_id, ath)`. A cache hit confirms the proof was already verified for this specific connection and token; a cache miss (different connection, different token, or first presentation) triggers full verification. This cache is inherently per-connection, so a stolen proof presented on a different connection will always miss and fail full verification.
+    To satisfy this requirement efficiently, the resource server MAY cache verified bindings keyed on `(connection_id, ath)`. On subsequent requests with the same token on the same connection, a cache hit confirms the binding was already verified; a cache miss (different connection, different token, or first presentation) triggers full verification. This cache is inherently per-connection, so a stolen proof presented on a different connection will always miss and fail full verification.
 
 6.  If all verifications succeed, the resource server processes the request. If any verification fails, the resource server MUST reject the request as specified in (#error-responses).
 
@@ -320,17 +320,23 @@ When token introspection {{!RFC7662}} is used, the introspection response MUST i
 
 ## Error Responses
 
-When verification of the Session-Binding Proof fails, the resource server MUST respond with HTTP 401 and include a `WWW-Authenticate` header with the following error codes:
+When verification of the Session-Binding Proof fails or the proof is missing, the resource server MUST respond with HTTP 401 and include a `WWW-Authenticate` header with the appropriate error code:
 
 ~~~
 WWW-Authenticate: Bearer error="invalid_proof",
-  error_description="description of failure"
+  error_description="Session-Binding Proof verification failed: 
+    exporter mismatch"
+~~~
+
+~~~
+WWW-Authenticate: Bearer error="use_session_binding",
+  error_description="This token requires a Session-Binding Proof"
 ~~~
 
 The following error code values are defined:
 
 invalid_proof:
-: The Session-Binding Proof is malformed or failed verification. This includes signature verification failure, exporter mismatch, expired `iat`, `jti` reuse, `ath` mismatch, and `htm`/`htu` mismatch.
+: The Session-Binding Proof is malformed or failed verification. This includes signature verification failure, exporter mismatch, stale `iat`, `jti` reuse, `ath` mismatch, and `htm`/`htu` mismatch.
 
 use_session_binding:
 : The access token requires a Session-Binding Proof (the `cnf.tls_exp` claim is present) but no `Session-Binding-Proof` header was provided. This error signals to the client that it must construct and present a proof.
@@ -363,7 +369,7 @@ The WIMSE Workload Identity Token (WIT) and Workload Proof Token (WPT) defined i
 
 ## Relationship to Transitive Attestation
 
-The Transitive Attestation profile {{!I-D.draft-mw-wimse-transitive-attestation}} addresses a complementary problem: binding an identity to a verified execution environment ("Proof of Residency"). While this specification binds tokens to a TLS session to prevent network-level replay, Transitive Attestation binds identities to a hardware-rooted host to prevent credential export. In high-assurance deployments, both mechanisms MAY be combined: Transitive Attestation ensures the token is used from the correct host, and TLS session binding ensures it is used on the correct connection.
+The Transitive Attestation profile {{!I-D.draft-mw-wimse-transitive-attestation}} addresses a complementary problem: binding an identity to a verified execution environment ("Proof of Residency"). While this specification binds tokens to a TLS connection to prevent network-level replay, Transitive Attestation binds identities to a hardware-rooted host to prevent credential export. In high-assurance deployments, both mechanisms MAY be combined: Transitive Attestation ensures the token is used from the correct host, and TLS session binding ensures it is used on the correct connection.
 
 ## Relationship to RFC 8693 (Token Exchange)
 
@@ -422,8 +428,8 @@ The following table summarizes the threats addressed by this specification, the 
 
 ### T4: Token + Proof Exfiltration (Both Stolen)
 
-*   **Threat**: An attacker obtains both the access token and the Session-Binding Proof.
-*   **Mitigation**: Two independent protections apply: (1) the attacker's mTLS certificate differs from the original client's, so the proof signature does not match the public key from the current handshake; (2) even with the same certificate, a different TLS connection produces a different EKM, so the `ekm` claim does not match.
+*   **Threat**: An attacker obtains both the access token and the Session-Binding Proof, and attempts to use them on their own mTLS connection to the same resource server.
+*   **Mitigation**: Two independent protections apply: (1) the attacker's mTLS certificate differs from the original client's, so the proof signature does not match the public key from the attacker's handshake — the resource server verifies the proof against the certificate presented on *this* connection; (2) even if the attacker somehow presents the same certificate, a different TLS connection produces a different EKM, so the `ekm` claim does not match the server's locally-derived value.
 *   **DPoP equivalent**: No. If both the DPoP proof and the DPoP key are exfiltrated, the attacker can replay from any connection.
 
 ### T5: Multi-Hop Delegation Chain Compromise
