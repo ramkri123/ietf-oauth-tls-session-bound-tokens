@@ -269,7 +269,9 @@ The following diagram illustrates the complete flow:
    |    Authorization: Bearer <access_token>            |
    |    Session-Binding-Proof: <proof_jwt>  (reused)    |
    |                                                    |
-   |  Server: cache hit — binding already verified       |
+   |  Server verifies (per request):                    |
+   |    - looks up (conn_id, ath) in cache              |
+   |    - cache hit: binding verified for THIS conn     |
    |                                                    |
    |<-- 200 OK ----------------------------------------|
 ~~~
