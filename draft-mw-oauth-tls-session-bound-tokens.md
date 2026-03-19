@@ -107,7 +107,7 @@ This specification defines a proof-of-possession mechanism that binds OAuth 2.0 
 1.  The client and resource server establish an mTLS connection. Both sides derive a TLS Exporter value unique to this connection.
 2.  When presenting an access token on a new connection, the client constructs a **Session-Binding Proof**: a JWT containing the hash of the access token and the TLS Exporter value.
 3.  The client signs this JWT with the private key corresponding to its mTLS client certificate. The same proof MAY be reused for all subsequent requests using that token on the same connection.
-4.  The resource server verifies the proof by checking the signature against the client certificate's public key, confirming the exporter value matches the current connection, and confirming the token hash matches the presented access token. The server MAY cache the verification result and skip re-verification for subsequent requests with the same token on the same connection.
+4.  The resource server verifies the proof by checking the signature against the client certificate's public key, confirming the exporter value matches the current connection, and confirming the token hash matches the presented access token. The server MUST perform these checks on every request but MAY use a per-connection cache to reduce subsequent verifications to a cache lookup.
 
 A token that requires session binding includes a confirmation method claim (`tls_exp`) containing the TLS Exporter label, which signals to the resource server that the Session-Binding Proof MUST be presented and verified.
 
@@ -341,7 +341,7 @@ The resource server SHOULD include an `error_description` parameter with a human
 
 ## Relationship to RFC 8705 (mTLS-Bound Tokens)
 
-This specification extends RFC 8705 by adding session-level binding on top of certificate binding. The `x5t#S256` claim from RFC 8705 is reused. Deployments MAY support both mechanisms simultaneously: RFC 8705 provides certificate binding, while this specification adds per-request session binding.
+This specification extends RFC 8705 by adding session-level binding on top of certificate binding. The `x5t#S256` claim from RFC 8705 is reused. Deployments MAY support both mechanisms simultaneously: RFC 8705 provides certificate binding, while this specification adds per-connection session binding.
 
 ## Relationship to RFC 9449 (DPoP)
 
@@ -592,7 +592,6 @@ This architecture provides defense-in-depth against agentic AI threat vectors:
 ## Relationship to Existing Infrastructure
 
 This deployment model aligns with the service mesh architecture used in SPIFFE/SPIRE environments, where the sidecar already manages workload identity certificates. When combined with Transitive Attestation {{!I-D.draft-mw-wimse-transitive-attestation}}, the sidecar can additionally attest that the agent is running in a verified execution environment while simultaneously binding all tokens to the active TLS connection.
-
 
 <reference anchor="RFC2119" target="https://www.rfc-editor.org/rfc/rfc2119">
   <front>
