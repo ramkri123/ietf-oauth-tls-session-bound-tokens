@@ -1,0 +1,2153 @@
+<!DOCTYPE html>
+<html lang="en" class="Internet-Draft">
+<head>
+<meta charset="utf-8">
+<meta content="Common,Latin" name="scripts">
+<meta content="initial-scale=1.0" name="viewport">
+<title>TLS-Session-Bound Token Exchange for OAuth 2.0</title>
+<meta content="Ram Krishnan" name="author">
+<meta content="A Prasad" name="author">
+<meta content="Diego R. Lopez" name="author">
+<meta content="Srinivasa Addepalli" name="author">
+<meta content="
+       This document defines a mechanism for binding OAuth 2.0 access tokens issued via the Token Exchange protocol {{!RFC8693}} to a specific mutual TLS (mTLS) session. The binding is achieved through a per-request proof token that incorporates the TLS Exporter value {{!RFC5705}} derived from the current session and an access token hash, signed by the client's private key corresponding to its mTLS certificate. This mechanism prevents stolen bearer tokens from being replayed on a different TLS session, addressing a critical security gap in environments with autonomous, multi-hop token delegation. 
+    " name="description">
+<meta content="xml2rfc 3.31.0" name="generator">
+<meta content="oauth" name="keyword">
+<meta content="token exchange" name="keyword">
+<meta content="tls" name="keyword">
+<meta content="channel binding" name="keyword">
+<meta content="proof of possession" name="keyword">
+<meta content="agentic ai" name="keyword">
+<meta content="bearer token" name="keyword">
+<meta content="draft-mw-oauth-tls-bound-token-exchange-00" name="ietf.draft">
+<!-- Generator version information:
+  xml2rfc 3.31.0
+    Python 3.10.12
+    ConfigArgParse 1.7.1
+    google-i18n-address 3.1.1
+    intervaltree 3.2.1
+    Jinja2 3.1.6
+    lxml 6.0.2
+    platformdirs 4.5.1
+    pycountry 26.2.16
+    pypdf 6.7.5
+    PyYAML 5.4.1
+    requests 2.32.5
+    wcwidth 0.6.0
+    weasyprint 68.1
+-->
+<link href="draft-mw-oauth-tls-bound-token-exchange-00.xml" rel="alternate" type="application/rfc+xml">
+<link href="#copyright" rel="license">
+<style type="text/css">/*
+
+  NOTE: Changes at the bottom of this file overrides some earlier settings.
+
+  Once the style has stabilized and has been adopted as an official RFC style,
+  this can be consolidated so that style settings occur only in one place, but
+  for now the contents of this file consists first of the initial CSS work as
+  provided to the RFC Formatter (xml2rfc) work, followed by itemized and
+  commented changes found necessary during the development of the v3
+  formatters.
+
+*/
+
+/* fonts */
+@import url('https://static.ietf.org/fonts/noto-sans/import.css'); /* Sans-serif */
+@import url('https://static.ietf.org/fonts/noto-serif/import.css'); /* Serif (print) */
+@import url('https://static.ietf.org/fonts/roboto-mono/import.css'); /* Monospace */
+
+:root {
+  --font-sans: 'Noto Sans', Arial, Helvetica, sans-serif;
+  --font-serif: 'Noto Serif', 'Times', 'Times New Roman', serif;
+  --font-mono: 'Roboto Mono', Courier, 'Courier New', monospace;
+}
+
+@viewport {
+  zoom: 1.0;
+}
+@-ms-viewport {
+  width: extend-to-zoom;
+  zoom: 1.0;
+}
+/* general and mobile first */
+html {
+}
+body {
+  max-width: 90%;
+  margin: 1.5em auto;
+  color: #222;
+  background-color: #fff;
+  font-size: 14px;
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  scroll-behavior: smooth;
+  overflow-wrap: break-word;
+}
+.ears {
+  display: none;
+}
+
+/* headings */
+#title, h1, h2, h3, h4, h5, h6 {
+  margin: 1em 0 0.5em;
+  font-weight: bold;
+  line-height: 1.3;
+}
+#title {
+  clear: both;
+  border-bottom: 1px solid #ddd;
+  margin: 0 0 0.5em 0;
+  padding: 1em 0 0.5em;
+}
+.author {
+  padding-bottom: 4px;
+}
+h1 {
+  font-size: 26px;
+  margin: 1em 0;
+}
+h2 {
+  font-size: 22px;
+  margin-top: -20px;  /* provide offset for in-page anchors */
+  padding-top: 33px;
+}
+h3 {
+  font-size: 18px;
+  margin-top: -36px;  /* provide offset for in-page anchors */
+  padding-top: 42px;
+}
+h4 {
+  font-size: 16px;
+  margin-top: -36px;  /* provide offset for in-page anchors */
+  padding-top: 42px;
+}
+h5, h6 {
+  font-size: 14px;
+}
+#n-copyright-notice {
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 1em;
+  margin-bottom: 1em;
+}
+/* general structure */
+p {
+  padding: 0;
+  margin: 0 0 1em 0;
+  text-align: left;
+}
+div, span {
+  position: relative;
+}
+div {
+  margin: 0;
+}
+.alignRight.art-text {
+  background-color: #f9f9f9;
+  border: 1px solid #eee;
+  border-radius: 3px;
+  padding: 1em 1em 0;
+  margin-bottom: 1.5em;
+}
+.alignRight.art-text pre {
+  padding: 0;
+}
+.alignRight {
+  margin: 1em 0;
+}
+.alignRight > *:first-child {
+  border: none;
+  margin: 0;
+  float: right;
+  clear: both;
+}
+.alignRight > *:nth-child(2) {
+  clear: both;
+  display: block;
+  border: none;
+}
+svg {
+  display: block;
+}
+@media print {
+  svg {
+    max-height: 850px;
+    max-width: 660px;
+  }
+}
+svg[font-family~="serif" i], svg [font-family~="serif" i] {
+  font-family: var(--font-serif);
+}
+svg[font-family~="sans-serif" i], svg [font-family~="sans-serif" i] {
+  font-family: var(--font-sans);
+}
+svg[font-family~="monospace" i], svg [font-family~="monospace" i] {
+  font-family: var(--font-mono);
+}
+.alignCenter.art-text {
+  background-color: #f9f9f9;
+  border: 1px solid #eee;
+  border-radius: 3px;
+  padding: 1em 1em 0;
+  margin-bottom: 1.5em;
+}
+.alignCenter.art-text pre {
+  padding: 0;
+}
+.alignCenter {
+  margin: 1em 0;
+}
+.alignCenter > *:first-child {
+  display: table;
+  border: none;
+  margin: 0 auto;
+}
+
+/* lists */
+ol, ul {
+  padding: 0;
+  margin: 0 0 1em 2em;
+}
+ol ol, ul ul, ol ul, ul ol {
+  margin-left: 1em;
+}
+li {
+  margin: 0 0 0.25em 0;
+}
+.ulCompact li {
+  margin: 0;
+}
+ul.empty, .ulEmpty {
+  list-style-type: none;
+}
+ul.empty li, .ulEmpty li {
+  margin-top: 0.5em;
+}
+ul.ulBare, li.ulBare {
+  margin-left: 0em !important;
+}
+ul.compact, .ulCompact,
+ol.compact, .olCompact {
+  line-height: 100%;
+  margin: 0 0 0 2em;
+}
+
+/* definition lists */
+dl {
+}
+dl > dt {
+  float: left;
+  margin-right: 1em;
+}
+/* 
+dl.nohang > dt {
+  float: none;
+}
+*/
+dl > dd {
+  margin-bottom: .8em;
+  min-height: 1.3em;
+}
+dl.compact > dd, .dlCompact > dd {
+  margin-bottom: 0em;
+}
+dl > dd > dl {
+  margin-top: 0.5em;
+  margin-bottom: 0em;
+}
+
+/* links */
+a {
+  text-decoration: none;
+}
+a[href] {
+  color: #22e; /* Arlen: WCAG 2019 */
+}
+a[href]:hover {
+  background-color: #f2f2f2;
+}
+figcaption a[href],
+a[href].selfRef {
+  color: #222;
+}
+/* XXX probably not this:
+a.selfRef:hover {
+  background-color: transparent;
+  cursor: default;
+} */
+
+/* Figures */
+tt, code, pre {
+  background-color: #f9f9f9;
+  font-family: var(--font-mono);
+}
+pre {
+  border: 1px solid #eee;
+  margin: 0;
+  padding: 1em;
+}
+img {
+  max-width: 100%;
+}
+figure {
+  margin: 0;
+}
+figure blockquote {
+  margin: 0.8em 0.4em 0.4em;
+}
+figcaption {
+  font-style: italic;
+  margin: 0 0 1em 0;
+}
+@media screen {
+  pre {
+    overflow-x: auto;
+    max-width: 100%;
+    max-width: calc(100% - 22px);
+  }
+}
+
+/* aside, blockquote */
+aside, blockquote {
+  margin-left: 0;
+  padding: 1.2em 2em;
+}
+blockquote {
+  background-color: #f9f9f9;
+  color: #111; /* Arlen: WCAG 2019 */
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  margin: 1em 0;
+}
+blockquote > *:last-child {
+  margin-bottom: 0;
+}
+cite {
+  display: block;
+  text-align: right;
+  font-style: italic;
+}
+.xref {
+  overflow-wrap: normal;
+}
+
+/* tables */
+table {
+  width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+  border: 1px solid #eee;
+}
+th, td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5em 0.75em;
+}
+th {
+  text-align: left;
+  background-color: #e9e9e9;
+}
+tr:nth-child(2n+1) > td {
+  background-color: #f5f5f5;
+}
+table caption {
+  font-style: italic;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+table p {
+  /* XXX to avoid bottom margin on table row signifiers. If paragraphs should
+     be allowed within tables more generally, it would be far better to select on a class. */
+  margin: 0;
+}
+
+/* pilcrow */
+a.pilcrow {
+  color: #666; /* Arlen: AHDJ 2019 */
+  text-decoration: none;
+  visibility: hidden;
+  user-select: none;
+  -ms-user-select: none;
+  -o-user-select:none;
+  -moz-user-select: none;
+  -khtml-user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+@media screen {
+  aside:hover > a.pilcrow,
+  p:hover > a.pilcrow,
+  blockquote:hover > a.pilcrow,
+  div:hover > a.pilcrow,
+  li:hover > a.pilcrow,
+  pre:hover > a.pilcrow {
+    visibility: visible;
+  }
+  a.pilcrow:hover {
+    background-color: transparent;
+  }
+}
+
+/* misc */
+hr {
+  border: 0;
+  border-top: 1px solid #eee;
+}
+.bcp14 {
+  font-variant: small-caps;
+}
+
+.role {
+  font-variant: all-small-caps;
+}
+
+/* info block */
+#identifiers {
+  margin: 0;
+  font-size: 0.9em;
+}
+#identifiers dt {
+  width: 3em;
+  clear: left;
+}
+#identifiers dd {
+  float: left;
+  margin-bottom: 0;
+}
+/* Fix PDF info block run off issue */
+@media print {
+  #identifiers dd {
+    max-width: 100%;
+  }
+}
+#identifiers .authors .author {
+  display: inline-block;
+  margin-right: 1.5em;
+}
+#identifiers .authors .org {
+  font-style: italic;
+}
+
+/* The prepared/rendered info at the very bottom of the page */
+.docInfo {
+  color: #666; /* Arlen: WCAG 2019 */
+  font-size: 0.9em;
+  font-style: italic;
+  margin-top: 2em;
+}
+.docInfo .prepared {
+  float: left;
+}
+.docInfo .prepared {
+  float: right;
+}
+
+/* table of contents */
+#toc  {
+  padding: 0.75em 0 2em 0;
+  margin-bottom: 1em;
+}
+nav.toc ul {
+  margin: 0 0.5em 0 0;
+  padding: 0;
+  list-style: none;
+}
+nav.toc li {
+  line-height: 1.3em;
+  margin: 0.75em 0;
+  padding-left: 1.2em;
+  text-indent: -1.2em;
+}
+/* references */
+.references dt {
+  text-align: right;
+  font-weight: bold;
+  min-width: 7em;
+}
+.references dd {
+  margin-left: 8em;
+  overflow: auto;
+}
+
+.refInstance {
+  margin-bottom: 1.25em;
+}
+
+.refSubseries {
+  margin-bottom: 1.25em;
+}
+
+.references .ascii {
+  margin-bottom: 0.25em;
+}
+
+/* index */
+.index ul {
+  margin: 0 0 0 1em;
+  padding: 0;
+  list-style: none;
+}
+.index ul ul {
+  margin: 0;
+}
+.index li {
+  margin: 0;
+  text-indent: -2em;
+  padding-left: 2em;
+  padding-bottom: 5px;
+}
+.indexIndex {
+  margin: 0.5em 0 1em;
+}
+.index a {
+  font-weight: 700;
+}
+/* make the index two-column on all but the smallest screens */
+@media (min-width: 600px) {
+  .index ul {
+    -moz-column-count: 2;
+    -moz-column-gap: 20px;
+  }
+  .index ul ul {
+    -moz-column-count: 1;
+    -moz-column-gap: 0;
+  }
+}
+
+/* authors */
+address.vcard {
+  font-style: normal;
+  margin: 1em 0;
+}
+
+address.vcard .nameRole {
+  font-weight: 700;
+  margin-left: 0;
+}
+address.vcard .label {
+  font-family: var(--font-sans);
+  margin: 0.5em 0;
+}
+address.vcard .type {
+  display: none;
+}
+.alternative-contact {
+  margin: 1.5em 0 1em;
+}
+hr.addr {
+  border-top: 1px dashed;
+  margin: 0;
+  color: #ddd;
+  max-width: calc(100% - 16px);
+}
+
+/* temporary notes */
+.rfcEditorRemove::before {
+  position: absolute;
+  top: 0.2em;
+  right: 0.2em;
+  padding: 0.2em;
+  content: "The RFC Editor will remove this note";
+  color: #9e2a00; /* Arlen: WCAG 2019 */
+  background-color: #ffd; /* Arlen: WCAG 2019 */
+}
+.rfcEditorRemove {
+  position: relative;
+  padding-top: 1.8em;
+  background-color: #ffd; /* Arlen: WCAG 2019 */
+  border-radius: 3px;
+}
+.cref {
+  background-color: #ffd; /* Arlen: WCAG 2019 */
+  padding: 2px 4px;
+}
+.crefSource {
+  font-style: italic;
+}
+/* alternative layout for smaller screens */
+@media screen and (max-width: 1023px) {
+  body {
+    padding-top: 2em;
+  }
+  #title {
+    padding: 1em 0;
+  }
+  h1 {
+    font-size: 24px;
+  }
+  h2 {
+    font-size: 20px;
+    margin-top: -18px;  /* provide offset for in-page anchors */
+    padding-top: 38px;
+  }
+  #identifiers dd {
+    max-width: 60%;
+  }
+  #toc {
+    position: fixed;
+    z-index: 2;
+    top: 0;
+    right: 0;
+    padding: 0;
+    margin: 0;
+    background-color: inherit;
+    border-bottom: 1px solid #ccc;
+  }
+  #toc h2 {
+    margin: -1px 0 0 0;
+    padding: 4px 0 4px 6px;
+    padding-right: 1em;
+    min-width: 190px;
+    font-size: 1.1em;
+    text-align: right;
+    background-color: #444;
+    color: white;
+    cursor: pointer;
+  }
+  #toc h2::before { /* css hamburger */
+    float: right;
+    position: relative;
+    width: 1em;
+    height: 1px;
+    left: -164px;
+    margin: 6px 0 0 0;
+    background: white none repeat scroll 0 0;
+    box-shadow: 0 4px 0 0 white, 0 8px 0 0 white;
+    content: "";
+  }
+  #toc nav {
+    display: none;
+    padding: 0.5em 1em 1em;
+    overflow: auto;
+    height: calc(100vh - 48px);
+    border-left: 1px solid #ddd;
+  }
+}
+
+/* alternative layout for wide screens */
+@media screen and (min-width: 1024px) {
+  body {
+    max-width: 724px;
+    margin: 42px auto;
+    padding-left: 1.5em;
+    padding-right: 29em;
+  }
+  #toc {
+    position: fixed;
+    top: 42px;
+    right: 42px;
+    width: 25%;
+    margin: 0;
+    padding: 0 1em;
+    z-index: 1;
+  }
+  #toc h2 {
+    border-top: none;
+    border-bottom: 1px solid #ddd;
+    font-size: 1em;
+    font-weight: normal;
+    margin: 0;
+    padding: 0.25em 1em 1em 0;
+  }
+  #toc nav {
+    display: block;
+    height: calc(90vh - 84px);
+    bottom: 0;
+    padding: 0.5em 0 0;
+    overflow: auto;
+  }
+  img { /* future proofing */
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+/* pagination */
+@media print {
+  body {
+    width: 100%;
+  }
+  p {
+    orphans: 3;
+    widows: 3;
+  }
+  #n-copyright-notice {
+    border-bottom: none;
+  }
+  #toc, #n-introduction {
+    page-break-before: always;
+  }
+  #toc {
+    border-top: none;
+    padding-top: 0;
+  }
+  figure, pre {
+    page-break-inside: avoid;
+  }
+  figure {
+    overflow: scroll;
+  }
+  .breakable pre {
+    break-inside: auto;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+  }
+  h2+*, h3+*, h4+*, h5+*, h6+* {
+    page-break-before: avoid;
+  }
+  pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 10pt;
+  }
+  table {
+    border: 1px solid #ddd;
+  }
+  td {
+    border-top: 1px solid #ddd;
+  }
+}
+
+/* This is commented out here, as the string-set: doesn't
+   pass W3C validation currently */
+/*
+.ears thead .left {
+  string-set: ears-top-left content();
+}
+
+.ears thead .center {
+  string-set: ears-top-center content();
+}
+
+.ears thead .right {
+  string-set: ears-top-right content();
+}
+
+.ears tfoot .left {
+  string-set: ears-bottom-left content();
+}
+
+.ears tfoot .center {
+  string-set: ears-bottom-center content();
+}
+
+.ears tfoot .right {
+  string-set: ears-bottom-right content();
+}
+*/
+
+@page :first {
+  padding-top: 0;
+  @top-left {
+    content: normal;
+    border: none;
+  }
+  @top-center {
+    content: normal;
+    border: none;
+  }
+  @top-right {
+    content: normal;
+    border: none;
+  }
+}
+
+@page {
+  size: A4;
+  margin-bottom: 45mm;
+  padding-top: 20px;
+  /* The following is commented out here, but set appropriately by in code, as
+     the content depends on the document */
+  /*
+  @top-left {
+    content: 'Internet-Draft';
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @top-left {
+    content: string(ears-top-left);
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @top-center {
+    content: string(ears-top-center);
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @top-right {
+    content: string(ears-top-right);
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @bottom-left {
+    content: string(ears-bottom-left);
+    vertical-align: top;
+    border-top: solid 1px #ccc;
+  }
+  @bottom-center {
+    content: string(ears-bottom-center);
+    vertical-align: top;
+    border-top: solid 1px #ccc;
+  }
+  @bottom-right {
+      content: '[Page ' counter(page) ']';
+      vertical-align: top;
+      border-top: solid 1px #ccc;
+  }
+  */
+
+}
+
+/* Changes introduced to fix issues found during implementation */
+/* Make sure links are clickable even if overlapped by following H* */
+a {
+  z-index: 2;
+}
+/* Separate body from document info even without intervening H1 */
+section {
+  clear: both;
+}
+
+
+/* Top align author divs, to avoid names without organization dropping level with org names */
+.author {
+  vertical-align: top;
+}
+
+/* Leave room in document info to show Internet-Draft on one line */
+#identifiers dt {
+  width: 8em;
+}
+
+/* Don't waste quite as much whitespace between label and value in doc info */
+#identifiers dd {
+  margin-left: 1em;
+}
+
+/* Give floating toc a background color (needed when it's a div inside section */
+#toc {
+  background-color: white;
+}
+
+/* Make the collapsed ToC header render white on gray also when it's a link */
+@media screen and (max-width: 1023px) {
+  #toc h2 a,
+  #toc h2 a:link,
+  #toc h2 a:focus,
+  #toc h2 a:hover,
+  #toc a.toplink,
+  #toc a.toplink:hover {
+    color: white;
+    background-color: #444;
+    text-decoration: none;
+  }
+}
+
+/* Give the bottom of the ToC some whitespace */
+@media screen and (min-width: 1024px) {
+  #toc {
+    padding: 0 0 1em 1em;
+  }
+}
+
+/* Style section numbers with more space between number and title */
+.section-number {
+  padding-right: 0.5em;
+}
+
+/* prevent monospace from becoming overly large */
+tt, code, pre {
+  font-size: 95%;
+}
+
+/* Fix the height/width aspect for ascii art*/
+.sourcecode pre,
+.art-text pre {
+  line-height: 1.12;
+}
+
+
+/* Add styling for a link in the ToC that points to the top of the document */
+a.toplink {
+  float: right;
+  margin-right: 0.5em;
+}
+
+/* Fix the dl styling to match the RFC 7992 attributes */
+dl > dt,
+dl.dlParallel > dt {
+  float: left;
+  margin-right: 1em;
+}
+dl.dlNewline > dt {
+  float: none;
+}
+
+/* Provide styling for table cell text alignment */
+table td.text-left,
+table th.text-left {
+  text-align: left;
+}
+table td.text-center,
+table th.text-center {
+  text-align: center;
+}
+table td.text-right,
+table th.text-right {
+  text-align: right;
+}
+
+/* Make the alternative author contact information look less like just another
+   author, and group it closer with the primary author contact information */
+.alternative-contact {
+  margin: 0.5em 0 0.25em 0;
+}
+address .non-ascii {
+  margin: 0 0 0 2em;
+}
+
+/* With it being possible to set tables with alignment
+  left, center, and right, { width: 100%; } does not make sense */
+table {
+  width: auto;
+}
+
+/* Avoid reference text that sits in a block with very wide left margin,
+   because of a long floating dt label.*/
+.references dd {
+  overflow: visible;
+}
+
+/* Control caption placement */
+caption {
+  caption-side: bottom;
+}
+
+/* Limit the width of the author address vcard, so names in right-to-left
+   script don't end up on the other side of the page. */
+
+address.vcard {
+  max-width: 30em;
+  margin-right: auto;
+}
+
+/* For address alignment dependent on LTR or RTL scripts */
+address div.left {
+  text-align: left;
+}
+address div.right {
+  text-align: right;
+}
+
+/* Provide table alignment support.  We can't use the alignX classes above
+   since they do unwanted things with caption and other styling. */
+table.right {
+ margin-left: auto;
+ margin-right: 0;
+}
+table.center {
+ margin-left: auto;
+ margin-right: auto;
+}
+table.left {
+ margin-left: 0;
+ margin-right: auto;
+}
+
+/* Give the table caption label the same styling as the figcaption */
+caption a[href] {
+  color: #222;
+}
+
+@media print {
+  .toplink {
+    display: none;
+  }
+
+  /* avoid overwriting the top border line with the ToC header */
+  #toc {
+    padding-top: 1px;
+  }
+
+  /* Avoid page breaks inside dl and author address entries */
+  .vcard {
+    page-break-inside: avoid;
+  }
+
+}
+/* Tweak the bcp14 keyword presentation */
+.bcp14 {
+  font-variant: small-caps;
+  font-weight: bold;
+  font-size: 0.9em;
+}
+/* Tweak the invisible space above H* in order not to overlay links in text above */
+ h2 {
+  margin-top: -18px;  /* provide offset for in-page anchors */
+  padding-top: 31px;
+ }
+ h3 {
+  margin-top: -18px;  /* provide offset for in-page anchors */
+  padding-top: 24px;
+ }
+ h4 {
+  margin-top: -18px;  /* provide offset for in-page anchors */
+  padding-top: 24px;
+ }
+/* Float artwork pilcrow to the right */
+@media screen {
+  .artwork a.pilcrow {
+    display: block;
+    line-height: 0.7;
+    margin-top: 0.15em;
+  }
+}
+/* Make pilcrows on dd visible */
+@media screen {
+  dd:hover > a.pilcrow {
+    visibility: visible;
+  }
+}
+/* Make the placement of figcaption match that of a table's caption
+   by removing the figure's added bottom margin */
+.alignLeft.art-text,
+.alignCenter.art-text,
+.alignRight.art-text {
+   margin-bottom: 0;
+}
+.alignLeft,
+.alignCenter,
+.alignRight {
+  margin: 1em 0 0 0;
+}
+/* In print, the pilcrow won't show on hover, so prevent it from taking up space,
+   possibly even requiring a new line */
+@media print {
+  a.pilcrow {
+    display: none;
+  }
+}
+/* Styling for the external metadata */
+div#external-metadata {
+  background-color: #eee;
+  padding: 0.5em;
+  margin-bottom: 0.5em;
+  display: none;
+}
+div#internal-metadata {
+  padding: 0.5em;                       /* to match the external-metadata padding */
+}
+/* Styling for title RFC Number */
+h1#rfcnum {
+  clear: both;
+  margin: 0 0 -1em;
+  padding: 1em 0 0 0;
+}
+/* Make .olPercent look the same as <ol><li> */
+dl.olPercent > dd {
+  margin-bottom: 0.25em;
+  min-height: initial;
+}
+/* Give aside some styling to set it apart */
+aside {
+  border-left: 1px solid #ddd;
+  margin: 1em 0 1em 2em;
+  padding: 0.2em 2em;
+}
+aside > dl,
+aside > ol,
+aside > ul,
+aside > table,
+aside > p {
+  margin-bottom: 0.5em;
+}
+/* Additional page break settings */
+@media print {
+  figcaption, table caption {
+    page-break-before: avoid;
+  }
+}
+/* Font size adjustments for print */
+@media print {
+  body  { font-size: 10pt;      line-height: normal; max-width: 96%; }
+  h1    { font-size: 1.72em;    padding-top: 1.5em; } /* 1*1.2*1.2*1.2 */
+  h2    { font-size: 1.44em;    padding-top: 1.5em; } /* 1*1.2*1.2 */
+  h3    { font-size: 1.2em;     padding-top: 1.5em; } /* 1*1.2 */
+  h4    { font-size: 1em;       padding-top: 1.5em; }
+  h5, h6 { font-size: 1em;      margin: initial; padding: 0.5em 0 0.3em; }
+}
+/* Sourcecode margin in print, when there's no pilcrow */
+@media print {
+  .artwork,
+  .artwork > pre,
+  .sourcecode {
+    margin-bottom: 1em;
+  }
+}
+/* Avoid narrow tables forcing too narrow table captions, which may render badly */
+table {
+  min-width: 20em;
+}
+/* ol type a */
+ol.type-a { list-style-type: lower-alpha; }
+ol.type-A { list-style-type: upper-alpha; }
+ol.type-i { list-style-type: lower-roman; }
+ol.type-I { list-style-type: upper-roman; }
+/* Apply the print table and row borders in general, on request from the RPC,
+and increase the contrast between border and odd row background slightly */
+table {
+  border: 1px solid #ddd;
+}
+td {
+  border-top: 1px solid #ddd;
+}
+tr {
+  break-inside: avoid;
+}
+tr:nth-child(2n+1) > td {
+  background-color: #f8f8f8;
+}
+/* Use style rules to govern display of the TOC. */
+@media screen and (max-width: 1023px) {
+  #toc nav { display: none; }
+  #toc.active nav { display: block; }
+}
+/* Add support for keepWithNext */
+.keepWithNext {
+  break-after: avoid-page;
+  break-after: avoid-page;
+}
+/* Add support for keepWithPrevious */
+.keepWithPrevious {
+  break-before: avoid-page;
+}
+/* Change the approach to avoiding breaks inside artwork etc. */
+figure, pre, table, .artwork, .sourcecode  {
+  break-before: auto;
+  break-after: auto;
+}
+/* Avoid breaks between <dt> and <dd> */
+dl {
+  break-before: auto;
+  break-inside: auto;
+}
+dt {
+  break-before: auto;
+  break-after: avoid-page;
+}
+dd {
+  break-before: avoid-page;
+  break-after: auto;
+  orphans: 3;
+  widows: 3
+}
+span.break, dd.break {
+  margin-bottom: 0;
+  min-height: 0;
+  break-before: auto;
+  break-inside: auto;
+  break-after: auto;
+}
+/* Undo break-before ToC */
+@media print {
+  #toc {
+    break-before: auto;
+  }
+}
+/* Text in compact lists should not get extra bottom margin space,
+   since that would makes the list not compact */
+ul.compact p, .ulCompact p,
+ol.compact p, .olCompact p {
+ margin: 0;
+}
+/* But the list as a whole needs the extra space at the end */
+section ul.compact,
+section .ulCompact,
+section ol.compact,
+section .olCompact {
+  margin-bottom: 1em;                    /* same as p not within ul.compact etc. */
+}
+/* The tt and code background above interferes with for instance table cell
+   backgrounds.  Changed to something a bit more selective. */
+tt, code {
+  background-color: transparent;
+}
+p tt, p code, li tt, li code, dt tt, dt code {
+  background-color: #f8f8f8;
+}
+/* Tweak the pre margin -- 0px doesn't come out well */
+pre {
+   margin-top: 0.5px;
+}
+/* Tweak the compact list text */
+ul.compact, .ulCompact,
+ol.compact, .olCompact,
+dl.compact, .dlCompact {
+  line-height: normal;
+}
+/* Don't add top margin for nested lists */
+li > ul, li > ol, li > dl,
+dd > ul, dd > ol, dd > dl,
+dl > dd > dl {
+  margin-top: initial;
+}
+/* Elements that should not be rendered on the same line as a <dt> */
+/* This should match the element list in writer.text.TextWriter.render_dl() */
+dd > div.artwork:first-child,
+dd > aside:first-child,
+dd > blockquote:first-child,
+dd > figure:first-child,
+dd > ol:first-child,
+dd > div.sourcecode:first-child,
+dd > table:first-child,
+dd > ul:first-child {
+  clear: left;
+}
+/* fix for weird browser behaviour when <dd/> is empty */
+dt+dd:empty::before{
+  content: "\00a0";
+}
+/* Make paragraph spacing inside <li> smaller than in body text, to fit better within the list */
+li > p {
+  margin-bottom: 0.5em
+}
+/* Don't let p margin spill out from inside list items */
+li > p:last-of-type:only-child {
+  margin-bottom: 0;
+}
+</style>
+<link href="rfc-local.css" rel="stylesheet" type="text/css">
+<script type="application/javascript">async function addMetadata(){try{const e=document.styleSheets[0].cssRules;for(let t=0;t<e.length;t++)if(/#identifiers/.exec(e[t].selectorText)){const a=e[t].cssText.replace("#identifiers","#external-updates");document.styleSheets[0].insertRule(a,document.styleSheets[0].cssRules.length)}}catch(e){console.log(e)}const e=document.getElementById("external-metadata");if(e)try{var t,a="",o=function(e){const t=document.getElementsByTagName("meta");for(let a=0;a<t.length;a++)if(t[a].getAttribute("name")===e)return t[a].getAttribute("content");return""}("rfc.number");if(o){t="https://www.rfc-editor.org/rfc/rfc"+o+".json";try{const e=await fetch(t);a=await e.json()}catch(e){t=document.URL.indexOf("html")>=0?document.URL.replace(/html$/,"json"):document.URL+".json";const o=await fetch(t);a=await o.json()}}if(!a)return;e.style.display="block";const s="",d="https://datatracker.ietf.org/doc",n="https://datatracker.ietf.org/ipr/search",c="https://www.rfc-editor.org/info",l=a.doc_id.toLowerCase(),i=a.doc_id.slice(0,3).toLowerCase(),f=a.doc_id.slice(3).replace(/^0+/,""),u={status:"Status",obsoletes:"Obsoletes",obsoleted_by:"Obsoleted By",updates:"Updates",updated_by:"Updated By",see_also:"See Also",errata_url:"Errata"};let h="<dl style='overflow:hidden' id='external-updates'>";["status","obsoletes","obsoleted_by","updates","updated_by","see_also","errata_url"].forEach(e=>{if("status"==e){a[e]=a[e].toLowerCase();var t=a[e].split(" "),o=t.length,w="",p=1;for(let e=0;e<o;e++)p<o?w=w+r(t[e])+" ":w+=r(t[e]),p++;a[e]=w}else if("obsoletes"==e||"obsoleted_by"==e||"updates"==e||"updated_by"==e){var g,m="",b=1;g=a[e].length;for(let t=0;t<g;t++)a[e][t]&&(a[e][t]=String(a[e][t]).toLowerCase(),m=b<g?m+"<a href='"+s+"/rfc/".concat(a[e][t])+"'>"+a[e][t].slice(3)+"</a>, ":m+"<a href='"+s+"/rfc/".concat(a[e][t])+"'>"+a[e][t].slice(3)+"</a>",b++);a[e]=m}else if("see_also"==e){var y,L="",C=1;y=a[e].length;for(let t=0;t<y;t++)if(a[e][t]){a[e][t]=String(a[e][t]);var _=a[e][t].slice(0,3),v=a[e][t].slice(3).replace(/^0+/,"");L=C<y?"RFC"!=_?L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+_+" "+v+"</a>, ":L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+v+"</a>, ":"RFC"!=_?L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+_+" "+v+"</a>":L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+v+"</a>",C++}a[e]=L}else if("errata_url"==e){var R="";R=a[e]?R+"<a href='"+a[e]+"'>Errata exist</a> | <a href='"+d+"/"+l+"'>Datatracker</a>| <a href='"+n+"/?"+i+"="+f+"&submit="+i+"'>IPR</a> | <a href='"+c+"/"+l+"'>Info page</a>":"<a href='"+d+"/"+l+"'>Datatracker</a> | <a href='"+n+"/?"+i+"="+f+"&submit="+i+"'>IPR</a> | <a href='"+c+"/"+l+"'>Info page</a>",a[e]=R}""!=a[e]?"Errata"==u[e]?h+=`<dt>More info:</dt><dd>${a[e]}</dd>`:h+=`<dt>${u[e]}:</dt><dd>${a[e]}</dd>`:"Errata"==u[e]&&(h+=`<dt>More info:</dt><dd>${a[e]}</dd>`)}),h+="</dl>",e.innerHTML=h}catch(e){console.log(e)}else console.log("Could not locate metadata <div> element");function r(e){return e.charAt(0).toUpperCase()+e.slice(1)}}window.removeEventListener("load",addMetadata),window.addEventListener("load",addMetadata);</script>
+</head>
+<body class="xml2rfc">
+<table class="ears">
+<thead><tr>
+<td class="left">Internet-Draft</td>
+<td class="center">TLS-Bound-TokenExchange</td>
+<td class="right">March 2026</td>
+</tr></thead>
+<tfoot><tr>
+<td class="left">Krishnan, et al.</td>
+<td class="center">Expires 20 September 2026</td>
+<td class="right">[Page]</td>
+</tr></tfoot>
+</table>
+<div id="external-metadata" class="document-information"></div>
+<div id="internal-metadata" class="document-information">
+<dl id="identifiers">
+<dt class="label-workgroup">Workgroup:</dt>
+<dd class="workgroup">OAuth</dd>
+<dt class="label-internet-draft">Internet-Draft:</dt>
+<dd class="internet-draft">draft-mw-oauth-tls-bound-token-exchange-00</dd>
+<dt class="label-published">Published:</dt>
+<dd class="published">
+<time datetime="2026-03-19" class="published">19 March 2026</time>
+    </dd>
+<dt class="label-intended-status">Intended Status:</dt>
+<dd class="intended-status">Standards Track</dd>
+<dt class="label-expires">Expires:</dt>
+<dd class="expires"><time datetime="2026-09-20">20 September 2026</time></dd>
+<dt class="label-authors">Authors:</dt>
+<dd class="authors">
+<div class="author">
+      <div class="author-name">R. Krishnan</div>
+<div class="org">JPMorgan Chase &amp; Co</div>
+</div>
+<div class="author">
+      <div class="author-name">A. Prasad</div>
+<div class="org">Oracle</div>
+</div>
+<div class="author">
+      <div class="author-name">D. Lopez</div>
+<div class="org">Telefonica</div>
+</div>
+<div class="author">
+      <div class="author-name">S. Addepalli</div>
+<div class="org">Aryaka</div>
+</div>
+</dd>
+</dl>
+</div>
+<h1 id="title">TLS-Session-Bound Token Exchange for OAuth 2.0</h1>
+<section id="section-abstract">
+      <h2 id="abstract"><a href="#abstract" class="selfRef">Abstract</a></h2>
+<p id="section-abstract-1">This document defines a mechanism for binding OAuth 2.0 access tokens issued via the Token Exchange protocol {{!RFC8693}} to a specific mutual TLS (mTLS) session. The binding is achieved through a per-request proof token that incorporates the TLS Exporter value {{!RFC5705}} derived from the current session and an access token hash, signed by the client's private key corresponding to its mTLS certificate. This mechanism prevents stolen bearer tokens from being replayed on a different TLS session, addressing a critical security gap in environments with autonomous, multi-hop token delegation.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
+</section>
+<div id="status-of-memo">
+<section id="section-boilerplate.1">
+        <h2 id="name-status-of-this-memo">
+<a href="#name-status-of-this-memo" class="section-name selfRef">Status of This Memo</a>
+        </h2>
+<p id="section-boilerplate.1-1">
+        This Internet-Draft is submitted in full conformance with the
+        provisions of BCP 78 and BCP 79.<a href="#section-boilerplate.1-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-2">
+        Internet-Drafts are working documents of the Internet Engineering Task
+        Force (IETF). Note that other groups may also distribute working
+        documents as Internet-Drafts. The list of current Internet-Drafts is
+        at <span><a href="https://datatracker.ietf.org/drafts/current/">https://datatracker.ietf.org/drafts/current/</a></span>.<a href="#section-boilerplate.1-2" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-3">
+        Internet-Drafts are draft documents valid for a maximum of six months
+        and may be updated, replaced, or obsoleted by other documents at any
+        time. It is inappropriate to use Internet-Drafts as reference
+        material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-4">
+        This Internet-Draft will expire on 20 September 2026.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="copyright">
+<section id="section-boilerplate.2">
+        <h2 id="name-copyright-notice">
+<a href="#name-copyright-notice" class="section-name selfRef">Copyright Notice</a>
+        </h2>
+<p id="section-boilerplate.2-1">
+            Copyright (c) 2026 IETF Trust and the persons identified as the
+            document authors. All rights reserved.<a href="#section-boilerplate.2-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.2-2">
+            This document is subject to BCP 78 and the IETF Trust's Legal
+            Provisions Relating to IETF Documents
+            (<span><a href="https://trustee.ietf.org/license-info">https://trustee.ietf.org/license-info</a></span>) in effect on the date of
+            publication of this document. Please review these documents
+            carefully, as they describe your rights and restrictions with
+            respect to this document. Code Components extracted from this
+            document must include Revised BSD License text as described in
+            Section 4.e of the Trust Legal Provisions and are provided without
+            warranty as described in the Revised BSD License.<a href="#section-boilerplate.2-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="toc">
+<section id="section-toc.1">
+        <a href="#" onclick="scroll(0,0)" class="toplink">▲</a><h2 id="name-table-of-contents">
+<a href="#name-table-of-contents" class="section-name selfRef">Table of Contents</a>
+        </h2>
+<nav class="toc"><ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1">
+            <p id="section-toc.1-1.1.1"><a href="#section-1" class="auto internal xref">1</a>.  <a href="#name-introduction" class="internal xref">Introduction</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.1">
+                <p id="section-toc.1-1.1.2.1.1" class="keepWithNext"><a href="#section-1.1" class="auto internal xref">1.1</a>.  <a href="#name-the-bearer-token-replay-pro" class="internal xref">The Bearer Token Replay Problem</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.2">
+                <p id="section-toc.1-1.1.2.2.1" class="keepWithNext"><a href="#section-1.2" class="auto internal xref">1.2</a>.  <a href="#name-the-agentic-ai-amplifier" class="internal xref">The Agentic AI Amplifier</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.3">
+                <p id="section-toc.1-1.1.2.3.1" class="keepWithNext"><a href="#section-1.3" class="auto internal xref">1.3</a>.  <a href="#name-conventions-and-terminology" class="internal xref">Conventions and Terminology</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2">
+            <p id="section-toc.1-1.2.1"><a href="#section-2" class="auto internal xref">2</a>.  <a href="#name-tls-session-binding-for-tok" class="internal xref">TLS Session Binding for Token Exchange</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2.2.1">
+                <p id="section-toc.1-1.2.2.1.1"><a href="#section-2.1" class="auto internal xref">2.1</a>.  <a href="#name-overview" class="internal xref">Overview</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2.2.2">
+                <p id="section-toc.1-1.2.2.2.1"><a href="#section-2.2" class="auto internal xref">2.2</a>.  <a href="#name-tls-exporter-derivation" class="internal xref">TLS Exporter Derivation</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2.2.3">
+                <p id="section-toc.1-1.2.2.3.1"><a href="#section-2.3" class="auto internal xref">2.3</a>.  <a href="#name-session-binding-proof-forma" class="internal xref">Session-Binding Proof Format</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2.2.3.2.1">
+                    <p id="section-toc.1-1.2.2.3.2.1.1"><a href="#section-2.3.1" class="auto internal xref">2.3.1</a>.  <a href="#name-header" class="internal xref">Header</a></p>
+</li>
+                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2.2.3.2.2">
+                    <p id="section-toc.1-1.2.2.3.2.2.1"><a href="#section-2.3.2" class="auto internal xref">2.3.2</a>.  <a href="#name-payload" class="internal xref">Payload</a></p>
+</li>
+                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2.2.3.2.3">
+                    <p id="section-toc.1-1.2.2.3.2.3.1"><a href="#section-2.3.3" class="auto internal xref">2.3.3</a>.  <a href="#name-signature" class="internal xref">Signature</a></p>
+</li>
+                </ul>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2.2.4">
+                <p id="section-toc.1-1.2.2.4.1"><a href="#section-2.4" class="auto internal xref">2.4</a>.  <a href="#name-token-confirmation-claim" class="internal xref">Token Confirmation Claim</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3">
+            <p id="section-toc.1-1.3.1"><a href="#section-3" class="auto internal xref">3</a>.  <a href="#name-protocol-flow" class="internal xref">Protocol Flow</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.1">
+                <p id="section-toc.1-1.3.2.1.1"><a href="#section-3.1" class="auto internal xref">3.1</a>.  <a href="#name-token-exchange-with-session" class="internal xref">Token Exchange with Session Binding</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.2">
+                <p id="section-toc.1-1.3.2.2.1"><a href="#section-3.2" class="auto internal xref">3.2</a>.  <a href="#name-resource-access-with-sessio" class="internal xref">Resource Access with Session-Binding Proof</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.3">
+                <p id="section-toc.1-1.3.2.3.1"><a href="#section-3.3" class="auto internal xref">3.3</a>.  <a href="#name-token-introspection-conside" class="internal xref">Token Introspection Considerations</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4">
+            <p id="section-toc.1-1.4.1"><a href="#section-4" class="auto internal xref">4</a>.  <a href="#name-integration-with-existing-m" class="internal xref">Integration with Existing Mechanisms</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.1">
+                <p id="section-toc.1-1.4.2.1.1"><a href="#section-4.1" class="auto internal xref">4.1</a>.  <a href="#name-relationship-to-rfc-8705-mt" class="internal xref">Relationship to RFC 8705 (mTLS-Bound Tokens)</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.2">
+                <p id="section-toc.1-1.4.2.2.1"><a href="#section-4.2" class="auto internal xref">4.2</a>.  <a href="#name-relationship-to-rfc-9449-dp" class="internal xref">Relationship to RFC 9449 (DPoP)</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.3">
+                <p id="section-toc.1-1.4.2.3.1"><a href="#section-4.3" class="auto internal xref">4.3</a>.  <a href="#name-relationship-to-wimse-wit-w" class="internal xref">Relationship to WIMSE WIT/WPT</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.4">
+                <p id="section-toc.1-1.4.2.4.1"><a href="#section-4.4" class="auto internal xref">4.4</a>.  <a href="#name-relationship-to-transitive-" class="internal xref">Relationship to Transitive Attestation</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.5">
+                <p id="section-toc.1-1.4.2.5.1"><a href="#section-4.5" class="auto internal xref">4.5</a>.  <a href="#name-relationship-to-rfc-8693-to" class="internal xref">Relationship to RFC 8693 (Token Exchange)</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5">
+            <p id="section-toc.1-1.5.1"><a href="#section-5" class="auto internal xref">5</a>.  <a href="#name-tls-proxy-considerations" class="internal xref">TLS Proxy Considerations</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.1">
+                <p id="section-toc.1-1.5.2.1.1"><a href="#section-5.1" class="auto internal xref">5.1</a>.  <a href="#name-pass-through-mtls" class="internal xref">Pass-Through mTLS</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.2">
+                <p id="section-toc.1-1.5.2.2.1"><a href="#section-5.2" class="auto internal xref">5.2</a>.  <a href="#name-tls-termination-at-proxy" class="internal xref">TLS Termination at Proxy</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6">
+            <p id="section-toc.1-1.6.1"><a href="#section-6" class="auto internal xref">6</a>.  <a href="#name-security-considerations" class="internal xref">Security Considerations</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.1">
+                <p id="section-toc.1-1.6.2.1.1"><a href="#section-6.1" class="auto internal xref">6.1</a>.  <a href="#name-addressed-threats" class="internal xref">Addressed Threats</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.1.2.1">
+                    <p id="section-toc.1-1.6.2.1.2.1.1"><a href="#section-6.1.1" class="auto internal xref">6.1.1</a>.  <a href="#name-cross-session-replay" class="internal xref">Cross-Session Replay</a></p>
+</li>
+                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.1.2.2">
+                    <p id="section-toc.1-1.6.2.1.2.2.1"><a href="#section-6.1.2" class="auto internal xref">6.1.2</a>.  <a href="#name-cross-host-replay" class="internal xref">Cross-Host Replay</a></p>
+</li>
+                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.1.2.3">
+                    <p id="section-toc.1-1.6.2.1.2.3.1"><a href="#section-6.1.3" class="auto internal xref">6.1.3</a>.  <a href="#name-token-exfiltration-via-llm-" class="internal xref">Token Exfiltration via LLM Prompt Injection</a></p>
+</li>
+                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.1.2.4">
+                    <p id="section-toc.1-1.6.2.1.2.4.1"><a href="#section-6.1.4" class="auto internal xref">6.1.4</a>.  <a href="#name-multi-hop-delegation-chain-" class="internal xref">Multi-Hop Delegation Chain Compromise</a></p>
+</li>
+                </ul>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.2">
+                <p id="section-toc.1-1.6.2.2.1"><a href="#section-6.2" class="auto internal xref">6.2</a>.  <a href="#name-residual-risks" class="internal xref">Residual Risks</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.2.2.1">
+                    <p id="section-toc.1-1.6.2.2.2.1.1"><a href="#section-6.2.1" class="auto internal xref">6.2.1</a>.  <a href="#name-intra-session-replay" class="internal xref">Intra-Session Replay</a></p>
+</li>
+                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.2.2.2">
+                    <p id="section-toc.1-1.6.2.2.2.2.1"><a href="#section-6.2.2" class="auto internal xref">6.2.2</a>.  <a href="#name-compromised-private-key" class="internal xref">Compromised Private Key</a></p>
+</li>
+                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.2.2.3">
+                    <p id="section-toc.1-1.6.2.2.2.3.1"><a href="#section-6.2.3" class="auto internal xref">6.2.3</a>.  <a href="#name-tls-proxy-trust" class="internal xref">TLS Proxy Trust</a></p>
+</li>
+                </ul>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7">
+            <p id="section-toc.1-1.7.1"><a href="#section-7" class="auto internal xref">7</a>.  <a href="#name-iana-considerations" class="internal xref">IANA Considerations</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.1">
+                <p id="section-toc.1-1.7.2.1.1"><a href="#section-7.1" class="auto internal xref">7.1</a>.  <a href="#name-oauth-token-confirmation-me" class="internal xref">OAuth Token Confirmation Methods</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.2">
+                <p id="section-toc.1-1.7.2.2.1"><a href="#section-7.2" class="auto internal xref">7.2</a>.  <a href="#name-http-header-fields" class="internal xref">HTTP Header Fields</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.2.2.1">
+                    <p id="section-toc.1-1.7.2.2.2.1.1"><a href="#section-7.2.1" class="auto internal xref">7.2.1</a>.  <a href="#name-session-binding-proof" class="internal xref">Session-Binding-Proof</a></p>
+</li>
+                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.2.2.2">
+                    <p id="section-toc.1-1.7.2.2.2.2.1"><a href="#section-7.2.2" class="auto internal xref">7.2.2</a>.  <a href="#name-tls-exporter" class="internal xref">TLS-Exporter</a></p>
+</li>
+                </ul>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.3">
+                <p id="section-toc.1-1.7.2.3.1"><a href="#section-7.3" class="auto internal xref">7.3</a>.  <a href="#name-tls-exporter-label" class="internal xref">TLS Exporter Label</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8">
+            <p id="section-toc.1-1.8.1"><a href="#appendix-A" class="auto internal xref"></a><a href="#name-authors-addresses" class="internal xref">Authors' Addresses</a></p>
+</li>
+        </ul>
+</nav>
+</section>
+</div>
+<div id="introduction">
+<section id="section-1">
+      <h2 id="name-introduction">
+<a href="#section-1" class="section-number selfRef">1. </a><a href="#name-introduction" class="section-name selfRef">Introduction</a>
+      </h2>
+<div id="the-bearer-token-replay-problem">
+<section id="section-1.1">
+        <h3 id="name-the-bearer-token-replay-pro">
+<a href="#section-1.1" class="section-number selfRef">1.1. </a><a href="#name-the-bearer-token-replay-pro" class="section-name selfRef">The Bearer Token Replay Problem</a>
+        </h3>
+<p id="section-1.1-1">The OAuth 2.0 Token Exchange protocol {{!RFC8693}} enables a client to exchange one security token for another, facilitating delegation and impersonation across service boundaries. The resulting access tokens are typically <strong>bearer tokens</strong>: any party in possession of the token can use it to access protected resources, regardless of the presenter's identity or the communication channel.<a href="#section-1.1-1" class="pilcrow">¶</a></p>
+<p id="section-1.1-2">Existing mitigations address parts of this problem:<a href="#section-1.1-2" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-1.1-3.1">
+            <strong>RFC 8705 (mTLS Certificate-Bound Tokens)</strong> {{!RFC8705}}: Binds the token to the client's X.509 certificate thumbprint. However, the binding is to the <em>certificate identity</em>, not the <em>TLS session</em>. If the same certificate is used across sessions, or if the certificate and token are both exfiltrated, the token remains replayable.<a href="#section-1.1-3.1" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-1.1-3.2">
+            <strong>RFC 9449 (DPoP)</strong> {{!RFC9449}}: Provides application-layer proof-of-possession by requiring the client to sign a proof JWT with an ephemeral key. DPoP binds to the key, not to the TLS channel, and targets a different deployment model (public clients without mTLS).<a href="#section-1.1-3.2" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-1.1-3.3">
+            <strong>Token Binding (RFC 8471-8473)</strong>: Proposed direct TLS session binding but required a new TLS extension, was never specified for Token Exchange, encountered adoption barriers in browsers and TLS 1.3 transitions, and was ultimately abandoned.<a href="#section-1.1-3.3" class="pilcrow">¶</a>
+</li>
+        </ul>
+<p id="section-1.1-4">None of these mechanisms provide <strong>TLS-session-level binding</strong> for tokens exchanged via {{!RFC8693}} in mTLS environments.<a href="#section-1.1-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="the-agentic-ai-amplifier">
+<section id="section-1.2">
+        <h3 id="name-the-agentic-ai-amplifier">
+<a href="#section-1.2" class="section-number selfRef">1.2. </a><a href="#name-the-agentic-ai-amplifier" class="section-name selfRef">The Agentic AI Amplifier</a>
+        </h3>
+<p id="section-1.2-1">The rise of autonomous AI agents dramatically amplifies the bearer token replay risk. Unlike traditional OAuth flows where a human initiates discrete requests, agentic AI systems:<a href="#section-1.2-1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-1.2-2.1">
+            <strong>Autonomously chain API calls</strong>: An agent may invoke hundreds of API calls across multiple services without human intervention, each potentially involving RFC 8693 token exchanges.<a href="#section-1.2-2.1" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-1.2-2.2">
+            <strong>Perform multi-hop delegation</strong>: Agent A exchanges its token for a delegated token to call Agent B, which exchanges again for Agent C. Each hop produces a new bearer token. A single compromise anywhere in this chain exposes all downstream tokens.<a href="#section-1.2-2.2" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-1.2-2.3">
+            <strong>Run for extended periods</strong>: Agents operate autonomously for hours or days, providing a broad window for token interception and replay.<a href="#section-1.2-2.3" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-1.2-2.4">
+            <strong>Generate opaque traffic</strong>: Agent-to-agent API calls are fully automated. A replayed token produces legitimate-looking traffic that is extremely difficult to distinguish from genuine requests—there is no human in the loop to detect anomalies.<a href="#section-1.2-2.4" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-1.2-2.5">
+            <strong>Are susceptible to prompt injection</strong>: A compromised or prompt-injected LLM agent can exfiltrate bearer tokens via tool calls, side channels, or log leakage. These tokens are immediately usable from any connection.<a href="#section-1.2-2.5" class="pilcrow">¶</a>
+</li>
+        </ul>
+<p id="section-1.2-3">These characteristics make bearer token replay a <strong>first-order threat</strong> in agentic AI architectures. This document addresses this gap by binding exchanged tokens to the mTLS session.<a href="#section-1.2-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="conventions-and-terminology">
+<section id="section-1.3">
+        <h3 id="name-conventions-and-terminology">
+<a href="#section-1.3" class="section-number selfRef">1.3. </a><a href="#name-conventions-and-terminology" class="section-name selfRef">Conventions and Terminology</a>
+        </h3>
+<p id="section-1.3-1">The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in BCP 14 {{!RFC2119}} {{!RFC8174}} when, and only when, they appear in all capitals, as shown here.<a href="#section-1.3-1" class="pilcrow">¶</a></p>
+<p id="section-1.3-2">This document uses the following terms:<a href="#section-1.3-2" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlCompact dlParallel" id="section-1.3-3">
+          <dt id="section-1.3-3.1">TLS Exporter Value:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.3-3.2">A value derived from the TLS handshake using the mechanism defined in {{!RFC5705}} (for TLS 1.2) or Section 7.5 of {{!RFC8446}} (for TLS 1.3). The exporter value is unique to the specific TLS session and is available to both endpoints.<a href="#section-1.3-3.2" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-1.3-3.3">Session-Binding Proof:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.3-3.4">A signed JWT presented alongside the access token that cryptographically binds the token to the current mTLS session via the TLS Exporter value.<a href="#section-1.3-3.4" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-1.3-3.5">Token Exchange:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.3-3.6">The protocol defined in {{!RFC8693}} for exchanging one security token for another at an authorization server.<a href="#section-1.3-3.6" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+</dl>
+</section>
+</div>
+</section>
+</div>
+<div id="tls-session-binding-for-token-exchange">
+<section id="section-2">
+      <h2 id="name-tls-session-binding-for-tok">
+<a href="#section-2" class="section-number selfRef">2. </a><a href="#name-tls-session-binding-for-tok" class="section-name selfRef">TLS Session Binding for Token Exchange</a>
+      </h2>
+<div id="overview">
+<section id="section-2.1">
+        <h3 id="name-overview">
+<a href="#section-2.1" class="section-number selfRef">2.1. </a><a href="#name-overview" class="section-name selfRef">Overview</a>
+        </h3>
+<p id="section-2.1-1">This specification defines a proof-of-possession mechanism that binds OAuth 2.0 access tokens to the mTLS session on which they are presented. The mechanism operates as follows:<a href="#section-2.1-1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="compact type-1" id="section-2.1-2">
+<li id="section-2.1-2.1">The client and resource server establish an mTLS connection. Both sides derive a TLS Exporter value unique to this session.<a href="#section-2.1-2.1" class="pilcrow">¶</a>
+</li>
+          <li id="section-2.1-2.2">When presenting an access token, the client constructs a <strong>Session-Binding Proof</strong>: a JWT containing the hash of the access token, the TLS Exporter value, and the HTTP method and URI of the request.<a href="#section-2.1-2.2" class="pilcrow">¶</a>
+</li>
+          <li id="section-2.1-2.3">The client signs this JWT with the private key corresponding to its mTLS client certificate.<a href="#section-2.1-2.3" class="pilcrow">¶</a>
+</li>
+          <li id="section-2.1-2.4">The resource server verifies the proof by checking the signature against the client certificate's public key, confirming the exporter value matches the current session, validating the timestamp, and verifying the token hash matches the presented access token.<a href="#section-2.1-2.4" class="pilcrow">¶</a>
+</li>
+        </ol>
+<p id="section-2.1-3">A token that requires session binding includes a new confirmation method claim (<code>tls_bound</code>) to signal to the resource server that the Session-Binding Proof MUST be presented and verified.<a href="#section-2.1-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="tls-exporter-derivation">
+<section id="section-2.2">
+        <h3 id="name-tls-exporter-derivation">
+<a href="#section-2.2" class="section-number selfRef">2.2. </a><a href="#name-tls-exporter-derivation" class="section-name selfRef">TLS Exporter Derivation</a>
+        </h3>
+<p id="section-2.2-1">Both the client and resource server MUST derive the TLS Exporter value using the following parameters:<a href="#section-2.2-1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-2.2-2.1">
+            <strong>Label</strong>: <code>EXPORTER-oauth-tls-bound-token-exchange</code><a href="#section-2.2-2.1" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-2.2-2.2">
+            <strong>Context</strong>: Empty (zero-length)<a href="#section-2.2-2.2" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-2.2-2.3">
+            <strong>Length</strong>: 32 octets<a href="#section-2.2-2.3" class="pilcrow">¶</a>
+</li>
+        </ul>
+<p id="section-2.2-3">For TLS 1.3, the exporter is derived as specified in Section 7.5 of {{!RFC8446}}. For TLS 1.2, the exporter is derived as specified in {{!RFC5705}}.<a href="#section-2.2-3" class="pilcrow">¶</a></p>
+<blockquote id="section-2.2-4">
+          <p id="section-2.2-4.1">[!NOTE]
+By binding to the TLS Exporter rather than the application traffic keys, the binding remains valid across TLS 1.3 <code>KeyUpdate</code> operations. Standard key rotation refreshes traffic keys but does not change the exporter master secret, avoiding unnecessary re-proof cycles while maintaining strong session binding.<a href="#section-2.2-4.1" class="pilcrow">¶</a></p>
+</blockquote>
+</section>
+</div>
+<div id="session-binding-proof-format">
+<section id="section-2.3">
+        <h3 id="name-session-binding-proof-forma">
+<a href="#section-2.3" class="section-number selfRef">2.3. </a><a href="#name-session-binding-proof-forma" class="section-name selfRef">Session-Binding Proof Format</a>
+        </h3>
+<p id="section-2.3-1">The Session-Binding Proof is a JWT with the following structure:<a href="#section-2.3-1" class="pilcrow">¶</a></p>
+<div id="header">
+<section id="section-2.3.1">
+          <h4 id="name-header">
+<a href="#section-2.3.1" class="section-number selfRef">2.3.1. </a><a href="#name-header" class="section-name selfRef">Header</a>
+          </h4>
+<div class="lang-json sourcecode" id="section-2.3.1-1">
+<pre>{
+  "typ": "tls-binding-proof+jwt",
+  "alg": "ES256",
+  "x5t#S256": "&lt;base64url SHA-256 thumbprint of client certificate&gt;"
+}
+</pre><a href="#section-2.3.1-1" class="pilcrow">¶</a>
+</div>
+<p id="section-2.3.1-2">The <code>alg</code> value MUST match the key type of the client's mTLS certificate. The <code>x5t#S256</code> value MUST be the base64url-encoded SHA-256 thumbprint of the DER-encoded client certificate, as defined in {{!RFC8705}}.<a href="#section-2.3.1-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="payload">
+<section id="section-2.3.2">
+          <h4 id="name-payload">
+<a href="#section-2.3.2" class="section-number selfRef">2.3.2. </a><a href="#name-payload" class="section-name selfRef">Payload</a>
+          </h4>
+<div class="lang-json sourcecode" id="section-2.3.2-1">
+<pre>{
+  "jti": "&lt;unique identifier&gt;",
+  "ath": "&lt;base64url SHA-256 hash of the access token&gt;",
+  "ekm": "&lt;base64url TLS Exporter value&gt;",
+  "iat": 1710820000,
+  "htm": "POST",
+  "htu": "/api/resource"
+}
+</pre><a href="#section-2.3.2-1" class="pilcrow">¶</a>
+</div>
+<p id="section-2.3.2-2">The payload claims are defined as follows:<a href="#section-2.3.2-2" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlCompact dlParallel" id="section-2.3.2-3">
+            <dt id="section-2.3.2-3.1">jti:</dt>
+            <dd style="margin-left: 1.5em" id="section-2.3.2-3.2">REQUIRED. A unique identifier for the proof to prevent replay. The value MUST be unique per proof token and SHOULD be a UUID or equivalent.<a href="#section-2.3.2-3.2" class="pilcrow">¶</a>
+</dd>
+            <dd class="break"></dd>
+<dt id="section-2.3.2-3.3">ath:</dt>
+            <dd style="margin-left: 1.5em" id="section-2.3.2-3.4">REQUIRED. The base64url-encoded SHA-256 hash of the ASCII encoding of the associated access token value.<a href="#section-2.3.2-3.4" class="pilcrow">¶</a>
+</dd>
+            <dd class="break"></dd>
+<dt id="section-2.3.2-3.5">ekm:</dt>
+            <dd style="margin-left: 1.5em" id="section-2.3.2-3.6">REQUIRED. The base64url-encoded TLS Exporter value derived as specified in <a href="#tls-exporter-derivation" class="auto internal xref">Section 2.2</a>.<a href="#section-2.3.2-3.6" class="pilcrow">¶</a>
+</dd>
+            <dd class="break"></dd>
+<dt id="section-2.3.2-3.7">iat:</dt>
+            <dd style="margin-left: 1.5em" id="section-2.3.2-3.8">REQUIRED. The time at which the proof was issued, as a NumericDate (seconds since the Unix epoch). The resource server MUST verify that this value is within an acceptable clock skew window.<a href="#section-2.3.2-3.8" class="pilcrow">¶</a>
+</dd>
+            <dd class="break"></dd>
+<dt id="section-2.3.2-3.9">htm:</dt>
+            <dd style="margin-left: 1.5em" id="section-2.3.2-3.10">REQUIRED. The HTTP method of the request to which the proof is attached (e.g., "GET", "POST").<a href="#section-2.3.2-3.10" class="pilcrow">¶</a>
+</dd>
+            <dd class="break"></dd>
+<dt id="section-2.3.2-3.11">htu:</dt>
+            <dd style="margin-left: 1.5em" id="section-2.3.2-3.12">REQUIRED. The HTTP target URI of the request to which the proof is attached, without query and fragment parts.<a href="#section-2.3.2-3.12" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+</dl>
+</section>
+</div>
+<div id="signature">
+<section id="section-2.3.3">
+          <h4 id="name-signature">
+<a href="#section-2.3.3" class="section-number selfRef">2.3.3. </a><a href="#name-signature" class="section-name selfRef">Signature</a>
+          </h4>
+<p id="section-2.3.3-1">The JWT MUST be signed using the private key corresponding to the client's mTLS certificate. The signature algorithm MUST match the <code>alg</code> header parameter.<a href="#section-2.3.3-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="token-confirmation-claim">
+<section id="section-2.4">
+        <h3 id="name-token-confirmation-claim">
+<a href="#section-2.4" class="section-number selfRef">2.4. </a><a href="#name-token-confirmation-claim" class="section-name selfRef">Token Confirmation Claim</a>
+        </h3>
+<p id="section-2.4-1">An authorization server that supports TLS-session-bound token exchange MUST include a <code>cnf</code> (confirmation) claim in the issued access token (when the token is a JWT) or in the token introspection response. The <code>cnf</code> claim MUST contain:<a href="#section-2.4-1" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-2.4-2">
+<pre>{
+  "cnf": {
+    "x5t#S256": "&lt;cert-thumbprint&gt;",
+    "tls_bound": true
+  }
+}
+</pre><a href="#section-2.4-2" class="pilcrow">¶</a>
+</div>
+<span class="break"></span><dl class="dlCompact dlParallel" id="section-2.4-3">
+          <dt id="section-2.4-3.1">x5t#S256:</dt>
+          <dd style="margin-left: 1.5em" id="section-2.4-3.2">REQUIRED. The certificate thumbprint as defined in {{!RFC8705}}.<a href="#section-2.4-3.2" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-2.4-3.3">tls_bound:</dt>
+          <dd style="margin-left: 1.5em" id="section-2.4-3.4">REQUIRED. A boolean value. When <code>true</code>, the resource server MUST require and verify a Session-Binding Proof for every request using this token.<a href="#section-2.4-3.4" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+</dl>
+</section>
+</div>
+</section>
+</div>
+<div id="protocol-flow">
+<section id="section-3">
+      <h2 id="name-protocol-flow">
+<a href="#section-3" class="section-number selfRef">3. </a><a href="#name-protocol-flow" class="section-name selfRef">Protocol Flow</a>
+      </h2>
+<div id="token-exchange-with-session-binding">
+<section id="section-3.1">
+        <h3 id="name-token-exchange-with-session">
+<a href="#section-3.1" class="section-number selfRef">3.1. </a><a href="#name-token-exchange-with-session" class="section-name selfRef">Token Exchange with Session Binding</a>
+        </h3>
+<p id="section-3.1-1">The token exchange flow is modified as follows:<a href="#section-3.1-1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="compact type-1" id="section-3.1-2">
+<li id="section-3.1-2.1">The client authenticates to the authorization server using mTLS and requests a token exchange per {{!RFC8693}}.<a href="#section-3.1-2.1" class="pilcrow">¶</a>
+</li>
+          <li id="section-3.1-2.2">The authorization server performs the exchange and issues a new access token.<a href="#section-3.1-2.2" class="pilcrow">¶</a>
+</li>
+          <li id="section-3.1-2.3">If the authorization server policy requires TLS session binding, it includes the <code>cnf</code> claim with <code>tls_bound: true</code> in the issued token.<a href="#section-3.1-2.3" class="pilcrow">¶</a>
+</li>
+          <li id="section-3.1-2.4">The client receives the token and notes the <code>tls_bound</code> requirement.<a href="#section-3.1-2.4" class="pilcrow">¶</a>
+</li>
+        </ol>
+</section>
+</div>
+<div id="resource-access-with-session-binding-proof">
+<section id="section-3.2">
+        <h3 id="name-resource-access-with-sessio">
+<a href="#section-3.2" class="section-number selfRef">3.2. </a><a href="#name-resource-access-with-sessio" class="section-name selfRef">Resource Access with Session-Binding Proof</a>
+        </h3>
+<p id="section-3.2-1">The following diagram illustrates the complete flow:<a href="#section-3.2-1" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-3.2-2">
+<pre> Client (with cert C)                          Resource Server
+   |                                                    |
+   |--- mTLS handshake (client cert C) ---------------&gt;|
+   |                                                    |
+   |  Both sides derive:                                |
+   |    EKM = TLS-Exporter(                             |
+   |      "EXPORTER-oauth-tls-bound-token-exchange",    |
+   |      "", 32)                                       |
+   |                                                    |
+   |  Client constructs proof JWT:                      |
+   |    header = { typ, alg, x5t#S256 }                 |
+   |    payload = {                                     |
+   |      jti: &lt;unique-id&gt;,                             |
+   |      ath: SHA256(access_token),                    |
+   |      ekm: EKM,                                    |
+   |      iat: &lt;unix_timestamp&gt;,                        |
+   |      htm: "POST",                                  |
+   |      htu: "/api/resource"                          |
+   |    }                                               |
+   |    sig = Sign(C.privateKey, header || payload)     |
+   |                                                    |
+   |--- HTTP Request ---------------------------------&gt;|
+   |    Authorization: Bearer &lt;access_token&gt;            |
+   |    Session-Binding-Proof: &lt;proof_jwt&gt;              |
+   |                                                    |
+   |  Server verifies:                                  |
+   |    1. sig matches C.publicKey from mTLS            |
+   |    2. ath matches SHA256(access_token)              |
+   |    3. ekm matches server-derived EKM               |
+   |    4. iat within acceptable skew window              |
+   |    5. htm/htu match actual request                  |
+   |    6. jti not previously seen                       |
+   |                                                    |
+   |&lt;-- 200 OK ----------------------------------------|
+</pre><a href="#section-3.2-2" class="pilcrow">¶</a>
+</div>
+<p id="section-3.2-3">When the client presents the access token to a resource server:<a href="#section-3.2-3" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="normal type-1" id="section-3.2-4">
+<li id="section-3.2-4.1">The client establishes an mTLS connection with the resource server.<a href="#section-3.2-4.1" class="pilcrow">¶</a>
+</li>
+          <li id="section-3.2-4.2">The client derives the TLS Exporter value for the current session.<a href="#section-3.2-4.2" class="pilcrow">¶</a>
+</li>
+          <li id="section-3.2-4.3">The client constructs a Session-Binding Proof JWT as specified in <a href="#session-binding-proof-format" class="auto internal xref">Section 2.3</a>.<a href="#section-3.2-4.3" class="pilcrow">¶</a>
+</li>
+          <li id="section-3.2-4.4">
+            <p id="section-3.2-4.4.1">The client sends the HTTP request with:<a href="#section-3.2-4.4.1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-3.2-4.4.2.1">The access token in the <code>Authorization</code> header: <code>Authorization: Bearer &lt;access_token&gt;</code><a href="#section-3.2-4.4.2.1" class="pilcrow">¶</a>
+</li>
+              <li class="compact" id="section-3.2-4.4.2.2">The Session-Binding Proof in the <code>Session-Binding-Proof</code> header: <code>Session-Binding-Proof: &lt;proof_jwt&gt;</code><a href="#section-3.2-4.4.2.2" class="pilcrow">¶</a>
+</li>
+            </ul>
+</li>
+          <li id="section-3.2-4.5">
+            <p id="section-3.2-4.5.1">The resource server performs the following verifications:<a href="#section-3.2-4.5.1" class="pilcrow">¶</a></p>
+<p id="section-3.2-4.5.2">a.  <strong>Standard mTLS verification</strong>: Verifies the client certificate as part of the TLS handshake.
+b.  <strong>Token validation</strong>: Validates the access token (signature, expiration, audience, etc.).
+c.  <strong>Certificate binding</strong>: Verifies that the <code>x5t#S256</code> in the token's <code>cnf</code> claim matches the presented client certificate.
+d.  <strong>TLS binding required</strong>: Checks that <code>cnf.tls_bound</code> is <code>true</code> and a Session-Binding Proof is present.
+e.  <strong>Proof signature</strong>: Verifies the proof JWT signature against the public key in the client certificate.
+f.  <strong>Exporter match</strong>: Derives the TLS Exporter value for the current session and confirms it matches the <code>ekm</code> claim in the proof.
+g.  <strong>Token hash</strong>: Computes SHA-256 of the presented access token and confirms it matches the <code>ath</code> claim.
+h.  <strong>Timestamp</strong>: Confirms <code>iat</code> is within the acceptable skew window.
+i.  <strong>Method and URI</strong>: Confirms <code>htm</code> and <code>htu</code> match the actual request.
+j.  <strong>Uniqueness</strong>: Confirms the <code>jti</code> has not been seen before within the token's validity period.<a href="#section-3.2-4.5.2" class="pilcrow">¶</a></p>
+</li>
+          <li id="section-3.2-4.6">
+            <p id="section-3.2-4.6.1">If all verifications succeed, the resource server processes the request. If any verification fails, the resource server MUST reject the request with HTTP 401.<a href="#section-3.2-4.6.1" class="pilcrow">¶</a></p>
+</li>
+        </ol>
+</section>
+</div>
+<div id="token-introspection-considerations">
+<section id="section-3.3">
+        <h3 id="name-token-introspection-conside">
+<a href="#section-3.3" class="section-number selfRef">3.3. </a><a href="#name-token-introspection-conside" class="section-name selfRef">Token Introspection Considerations</a>
+        </h3>
+<p id="section-3.3-1">When token introspection {{!RFC7662}} is used, the introspection response MUST include the <code>cnf</code> claim with the <code>tls_bound</code> field. This allows resource servers that do not have direct access to the token's claims (e.g., opaque tokens) to determine whether session binding is required.<a href="#section-3.3-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="integration-with-existing-mechanisms">
+<section id="section-4">
+      <h2 id="name-integration-with-existing-m">
+<a href="#section-4" class="section-number selfRef">4. </a><a href="#name-integration-with-existing-m" class="section-name selfRef">Integration with Existing Mechanisms</a>
+      </h2>
+<div id="relationship-to-rfc-8705-mtls-bound-tokens">
+<section id="section-4.1">
+        <h3 id="name-relationship-to-rfc-8705-mt">
+<a href="#section-4.1" class="section-number selfRef">4.1. </a><a href="#name-relationship-to-rfc-8705-mt" class="section-name selfRef">Relationship to RFC 8705 (mTLS-Bound Tokens)</a>
+        </h3>
+<p id="section-4.1-1">This specification extends RFC 8705 by adding session-level binding on top of certificate binding. The <code>x5t#S256</code> claim from RFC 8705 is reused. Deployments MAY support both mechanisms simultaneously: RFC 8705 provides certificate binding, while this specification adds per-request session binding.<a href="#section-4.1-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="relationship-to-rfc-9449-dpop">
+<section id="section-4.2">
+        <h3 id="name-relationship-to-rfc-9449-dp">
+<a href="#section-4.2" class="section-number selfRef">4.2. </a><a href="#name-relationship-to-rfc-9449-dp" class="section-name selfRef">Relationship to RFC 9449 (DPoP)</a>
+        </h3>
+<p id="section-4.2-1">DPoP and this specification address similar goals (proof-of-possession) but use different mechanisms and binding targets:<a href="#section-4.2-1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-4.2-2.1">
+            <strong>DPoP</strong>: Applicable to both public and confidential clients. Particularly valuable for public clients that cannot use mTLS. Uses ephemeral, application-managed keys not bound to the TLS layer.<a href="#section-4.2-2.1" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-4.2-2.2">
+            <strong>This specification</strong>: Designed for confidential clients and workloads that already use mTLS. Reuses the existing mTLS certificate and adds TLS channel binding.<a href="#section-4.2-2.2" class="pilcrow">¶</a>
+</li>
+        </ul>
+<p id="section-4.2-3">In environments where both mTLS and DPoP are available, this specification provides stronger security guarantees because it binds to both the client identity (certificate) and the transport session (exporter).<a href="#section-4.2-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="relationship-to-wimse-wit-wpt">
+<section id="section-4.3">
+        <h3 id="name-relationship-to-wimse-wit-w">
+<a href="#section-4.3" class="section-number selfRef">4.3. </a><a href="#name-relationship-to-wimse-wit-w" class="section-name selfRef">Relationship to WIMSE WIT/WPT</a>
+        </h3>
+<p id="section-4.3-1">The WIMSE Workload Identity Token (WIT) and Workload Proof Token (WPT) defined in {{!I-D.ietf-wimse-s2s-protocol}} provide a similar proof-of-possession mechanism for workload-to-workload communication. This specification is compatible with WIMSE and can be used in conjunction with WIT/WPT when mTLS-based session binding is required for tokens obtained via RFC 8693 exchange.<a href="#section-4.3-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="relationship-to-transitive-attestation">
+<section id="section-4.4">
+        <h3 id="name-relationship-to-transitive-">
+<a href="#section-4.4" class="section-number selfRef">4.4. </a><a href="#name-relationship-to-transitive-" class="section-name selfRef">Relationship to Transitive Attestation</a>
+        </h3>
+<p id="section-4.4-1">The Transitive Attestation profile {{!I-D.draft-mw-wimse-transitive-attestation}} addresses a complementary problem: binding an identity to a verified execution environment ("Proof of Residency"). While this specification binds tokens to a TLS session to prevent network-level replay, Transitive Attestation binds identities to a hardware-rooted host to prevent credential export. In high-assurance deployments, both mechanisms MAY be combined: Transitive Attestation ensures the token is used from the correct host, and TLS session binding ensures it is used on the correct connection.<a href="#section-4.4-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="relationship-to-rfc-8693-token-exchange">
+<section id="section-4.5">
+        <h3 id="name-relationship-to-rfc-8693-to">
+<a href="#section-4.5" class="section-number selfRef">4.5. </a><a href="#name-relationship-to-rfc-8693-to" class="section-name selfRef">Relationship to RFC 8693 (Token Exchange)</a>
+        </h3>
+<p id="section-4.5-1">This specification does not modify the token exchange protocol itself. The authorization server's token exchange endpoint continues to operate as specified in {{!RFC8693}}. The session binding is applied to the <em>resulting</em> access token through the <code>cnf</code> claim. The authorization server MAY apply session binding based on policy, client registration, or the properties of the exchanged tokens.<a href="#section-4.5-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="tls-proxy-considerations">
+<section id="section-5">
+      <h2 id="name-tls-proxy-considerations">
+<a href="#section-5" class="section-number selfRef">5. </a><a href="#name-tls-proxy-considerations" class="section-name selfRef">TLS Proxy Considerations</a>
+      </h2>
+<div id="pass-through-mtls">
+<section id="section-5.1">
+        <h3 id="name-pass-through-mtls">
+<a href="#section-5.1" class="section-number selfRef">5.1. </a><a href="#name-pass-through-mtls" class="section-name selfRef">Pass-Through mTLS</a>
+        </h3>
+<p id="section-5.1-1">In deployments where TLS is terminated at the application server (pass-through mode), this specification works without modification. Both the client and server have direct access to the TLS Exporter value.<a href="#section-5.1-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="tls-termination-at-proxy">
+<section id="section-5.2">
+        <h3 id="name-tls-termination-at-proxy">
+<a href="#section-5.2" class="section-number selfRef">5.2. </a><a href="#name-tls-termination-at-proxy" class="section-name selfRef">TLS Termination at Proxy</a>
+        </h3>
+<p id="section-5.2-1">When a TLS-terminating proxy (e.g., a load balancer or API gateway) sits between the client and the resource server, the proxy MUST forward the following information to the backend:<a href="#section-5.2-1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="compact type-1" id="section-5.2-2">
+<li id="section-5.2-2.1">The client certificate or its thumbprint, as specified in {{!RFC9440}}.<a href="#section-5.2-2.1" class="pilcrow">¶</a>
+</li>
+          <li id="section-5.2-2.2">The TLS Exporter value derived from the client-to-proxy mTLS session.<a href="#section-5.2-2.2" class="pilcrow">¶</a>
+</li>
+        </ol>
+<p id="section-5.2-3">A new HTTP header is defined for conveying the exporter value:<a href="#section-5.2-3" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-5.2-4">
+<pre>TLS-Exporter: &lt;base64url-encoded exporter value&gt;
+</pre><a href="#section-5.2-4" class="pilcrow">¶</a>
+</div>
+<p id="section-5.2-5">The proxy MUST derive the exporter using the label and parameters specified in <a href="#tls-exporter-derivation" class="auto internal xref">Section 2.2</a> from the client-facing TLS session, and forward it in this header over a trusted, integrity-protected connection to the backend.<a href="#section-5.2-5" class="pilcrow">¶</a></p>
+<p id="section-5.2-6">The backend resource server MUST use the forwarded exporter value (instead of its own locally-derived value) when verifying the Session-Binding Proof.<a href="#section-5.2-6" class="pilcrow">¶</a></p>
+<blockquote id="section-5.2-7">
+          <p id="section-5.2-7.1">[!WARNING]
+The <code>TLS-Exporter</code> header contains security-sensitive material. The connection between the proxy and backend MUST be integrity-protected (e.g., via a separate mTLS connection or a trusted network). The backend MUST NOT accept this header from untrusted sources.<a href="#section-5.2-7.1" class="pilcrow">¶</a></p>
+</blockquote>
+</section>
+</div>
+</section>
+</div>
+<div id="security-considerations">
+<section id="section-6">
+      <h2 id="name-security-considerations">
+<a href="#section-6" class="section-number selfRef">6. </a><a href="#name-security-considerations" class="section-name selfRef">Security Considerations</a>
+      </h2>
+<div id="addressed-threats">
+<section id="section-6.1">
+        <h3 id="name-addressed-threats">
+<a href="#section-6.1" class="section-number selfRef">6.1. </a><a href="#name-addressed-threats" class="section-name selfRef">Addressed Threats</a>
+        </h3>
+<div id="cross-session-replay">
+<section id="section-6.1.1">
+          <h4 id="name-cross-session-replay">
+<a href="#section-6.1.1" class="section-number selfRef">6.1.1. </a><a href="#name-cross-session-replay" class="section-name selfRef">Cross-Session Replay</a>
+          </h4>
+<p id="section-6.1.1-1">The TLS Exporter value is cryptographically derived from the TLS handshake transcript and is unique per TLS connection. An attacker who intercepts a bearer token cannot replay it on a different TLS connection because the exporter value will not match. Note that TLS 1.3 is RECOMMENDED, as TLS 1.2 session resumption via abbreviated handshakes may reuse the same master secret across connections.<a href="#section-6.1.1-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="cross-host-replay">
+<section id="section-6.1.2">
+          <h4 id="name-cross-host-replay">
+<a href="#section-6.1.2" class="section-number selfRef">6.1.2. </a><a href="#name-cross-host-replay" class="section-name selfRef">Cross-Host Replay</a>
+          </h4>
+<p id="section-6.1.2-1">The Session-Binding Proof is signed with the client's mTLS private key. An attacker on a different host cannot produce a valid proof without possessing the private key.<a href="#section-6.1.2-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="token-exfiltration-via-llm-prompt-injection">
+<section id="section-6.1.3">
+          <h4 id="name-token-exfiltration-via-llm-">
+<a href="#section-6.1.3" class="section-number selfRef">6.1.3. </a><a href="#name-token-exfiltration-via-llm-" class="section-name selfRef">Token Exfiltration via LLM Prompt Injection</a>
+          </h4>
+<p id="section-6.1.3-1">Even if an AI agent's bearer token is exfiltrated via prompt injection, tool-call side channels, or log leakage, the attacker cannot produce a valid Session-Binding Proof because they lack both the client's private key and the ability to derive the TLS Exporter value from the legitimate session.<a href="#section-6.1.3-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="multi-hop-delegation-chain-compromise">
+<section id="section-6.1.4">
+          <h4 id="name-multi-hop-delegation-chain-">
+<a href="#section-6.1.4" class="section-number selfRef">6.1.4. </a><a href="#name-multi-hop-delegation-chain-" class="section-name selfRef">Multi-Hop Delegation Chain Compromise</a>
+          </h4>
+<p id="section-6.1.4-1">Each hop in a delegation chain (A→B→C→D) uses a distinct mTLS session with a distinct exporter value. A token stolen at any point in the chain is bound to that specific session and cannot be replayed on a different hop.<a href="#section-6.1.4-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="residual-risks">
+<section id="section-6.2">
+        <h3 id="name-residual-risks">
+<a href="#section-6.2" class="section-number selfRef">6.2. </a><a href="#name-residual-risks" class="section-name selfRef">Residual Risks</a>
+        </h3>
+<div id="intra-session-replay">
+<section id="section-6.2.1">
+          <h4 id="name-intra-session-replay">
+<a href="#section-6.2.1" class="section-number selfRef">6.2.1. </a><a href="#name-intra-session-replay" class="section-name selfRef">Intra-Session Replay</a>
+          </h4>
+<p id="section-6.2.1-1">Within the same TLS session, an attacker with access to the channel (e.g., a compromised middleware component) could observe and replay requests. This risk is mitigated by:<a href="#section-6.2.1-1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-6.2.1-2.1">The <code>jti</code> claim, which provides per-proof uniqueness when the server maintains a replay cache.<a href="#section-6.2.1-2.1" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-6.2.1-2.2">Short <code>ts</code> validity windows that limit the temporal scope of any replay.<a href="#section-6.2.1-2.2" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-6.2.1-2.3">An OPTIONAL server-issued nonce mechanism for environments requiring stronger intra-session replay protection.<a href="#section-6.2.1-2.3" class="pilcrow">¶</a>
+</li>
+          </ul>
+</section>
+</div>
+<div id="compromised-private-key">
+<section id="section-6.2.2">
+          <h4 id="name-compromised-private-key">
+<a href="#section-6.2.2" class="section-number selfRef">6.2.2. </a><a href="#name-compromised-private-key" class="section-name selfRef">Compromised Private Key</a>
+          </h4>
+<p id="section-6.2.2-1">If the client's mTLS private key is compromised, the attacker can produce valid proofs. This risk is mitigated by:<a href="#section-6.2.2-1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-6.2.2-2.1">Hardware-backed key storage (TPM, HSM, TEE).<a href="#section-6.2.2-2.1" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-6.2.2-2.2">Short-lived certificates (e.g., SPIFFE SVIDs with 1-hour expiry).<a href="#section-6.2.2-2.2" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-6.2.2-2.3">Transitive Attestation {{!I-D.draft-mw-wimse-transitive-attestation}} for binding identity to a verified execution context.<a href="#section-6.2.2-2.3" class="pilcrow">¶</a>
+</li>
+          </ul>
+</section>
+</div>
+<div id="tls-proxy-trust">
+<section id="section-6.2.3">
+          <h4 id="name-tls-proxy-trust">
+<a href="#section-6.2.3" class="section-number selfRef">6.2.3. </a><a href="#name-tls-proxy-trust" class="section-name selfRef">TLS Proxy Trust</a>
+          </h4>
+<p id="section-6.2.3-1">The <code>TLS-Exporter</code> header introduces a trust dependency on the proxy. A compromised proxy could forge exporter values. Mitigations include mutual authentication between proxy and backend, and restricting the header to trusted network segments.<a href="#section-6.2.3-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+</section>
+</div>
+<div id="iana-considerations">
+<section id="section-7">
+      <h2 id="name-iana-considerations">
+<a href="#section-7" class="section-number selfRef">7. </a><a href="#name-iana-considerations" class="section-name selfRef">IANA Considerations</a>
+      </h2>
+<div id="oauth-token-confirmation-methods">
+<section id="section-7.1">
+        <h3 id="name-oauth-token-confirmation-me">
+<a href="#section-7.1" class="section-number selfRef">7.1. </a><a href="#name-oauth-token-confirmation-me" class="section-name selfRef">OAuth Token Confirmation Methods</a>
+        </h3>
+<p id="section-7.1-1">This specification registers the following confirmation method in the IANA "OAuth Token Confirmation Methods" registry:<a href="#section-7.1-1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-7.1-2.1">
+            <strong>Confirmation Method Value</strong>: <code>tls_bound</code><a href="#section-7.1-2.1" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-7.1-2.2">
+            <strong>Confirmation Method Description</strong>: TLS Session Binding Required<a href="#section-7.1-2.2" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-7.1-2.3">
+            <strong>Change Controller</strong>: IETF<a href="#section-7.1-2.3" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-7.1-2.4">
+            <strong>Reference</strong>: [this document]<a href="#section-7.1-2.4" class="pilcrow">¶</a>
+</li>
+        </ul>
+</section>
+</div>
+<div id="http-header-fields">
+<section id="section-7.2">
+        <h3 id="name-http-header-fields">
+<a href="#section-7.2" class="section-number selfRef">7.2. </a><a href="#name-http-header-fields" class="section-name selfRef">HTTP Header Fields</a>
+        </h3>
+<p id="section-7.2-1">This specification registers the following HTTP header fields:<a href="#section-7.2-1" class="pilcrow">¶</a></p>
+<div id="session-binding-proof">
+<section id="section-7.2.1">
+          <h4 id="name-session-binding-proof">
+<a href="#section-7.2.1" class="section-number selfRef">7.2.1. </a><a href="#name-session-binding-proof" class="section-name selfRef">Session-Binding-Proof</a>
+          </h4>
+<ul class="compact">
+<li class="compact" id="section-7.2.1-1.1">
+              <strong>Header Field Name</strong>: <code>Session-Binding-Proof</code><a href="#section-7.2.1-1.1" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-7.2.1-1.2">
+              <strong>Status</strong>: permanent<a href="#section-7.2.1-1.2" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-7.2.1-1.3">
+              <strong>Reference</strong>: [this document]<a href="#section-7.2.1-1.3" class="pilcrow">¶</a>
+</li>
+          </ul>
+</section>
+</div>
+<div id="tls-exporter">
+<section id="section-7.2.2">
+          <h4 id="name-tls-exporter">
+<a href="#section-7.2.2" class="section-number selfRef">7.2.2. </a><a href="#name-tls-exporter" class="section-name selfRef">TLS-Exporter</a>
+          </h4>
+<ul class="compact">
+<li class="compact" id="section-7.2.2-1.1">
+              <strong>Header Field Name</strong>: <code>TLS-Exporter</code><a href="#section-7.2.2-1.1" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-7.2.2-1.2">
+              <strong>Status</strong>: permanent<a href="#section-7.2.2-1.2" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="section-7.2.2-1.3">
+              <strong>Reference</strong>: [this document]<a href="#section-7.2.2-1.3" class="pilcrow">¶</a>
+</li>
+          </ul>
+</section>
+</div>
+</section>
+</div>
+<div id="tls-exporter-label">
+<section id="section-7.3">
+        <h3 id="name-tls-exporter-label">
+<a href="#section-7.3" class="section-number selfRef">7.3. </a><a href="#name-tls-exporter-label" class="section-name selfRef">TLS Exporter Label</a>
+        </h3>
+<p id="section-7.3-1">This specification registers the following TLS Exporter label in the IANA "TLS Exporter Labels" registry:<a href="#section-7.3-1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-7.3-2.1">
+            <strong>Value</strong>: <code>EXPORTER-oauth-tls-bound-token-exchange</code><a href="#section-7.3-2.1" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-7.3-2.2">
+            <strong>DTLS-OK</strong>: N<a href="#section-7.3-2.2" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-7.3-2.3">
+            <strong>Recommended</strong>: Y<a href="#section-7.3-2.3" class="pilcrow">¶</a>
+</li>
+          <li class="compact" id="section-7.3-2.4">
+            <strong>Reference</strong>: [this document]<a href="#section-7.3-2.4" class="pilcrow">¶</a>
+</li>
+        </ul>
+</section>
+</div>
+</section>
+</div>
+<div id="authors-addresses">
+<section id="appendix-A">
+      <h2 id="name-authors-addresses">
+<a href="#name-authors-addresses" class="section-name selfRef">Authors' Addresses</a>
+      </h2>
+<address class="vcard">
+        <div dir="auto" class="left"><span class="fn nameRole">Ram Krishnan</span></div>
+<div dir="auto" class="left"><span class="org">JPMorgan Chase &amp; Co</span></div>
+<div class="email">
+<span>Email:</span>
+<a href="mailto:ramkri123@gmail.com" class="email">ramkri123@gmail.com</a>
+</div>
+</address>
+<address class="vcard">
+        <div dir="auto" class="left"><span class="fn nameRole">A Prasad</span></div>
+<div dir="auto" class="left"><span class="org">Oracle</span></div>
+<div class="email">
+<span>Email:</span>
+<a href="mailto:a.prasad@oracle.com" class="email">a.prasad@oracle.com</a>
+</div>
+</address>
+<address class="vcard">
+        <div dir="auto" class="left"><span class="fn nameRole">Diego R. Lopez</span></div>
+<div dir="auto" class="left"><span class="org">Telefonica</span></div>
+<div class="email">
+<span>Email:</span>
+<a href="mailto:diego.r.lopez@telefonica.com" class="email">diego.r.lopez@telefonica.com</a>
+</div>
+</address>
+<address class="vcard">
+        <div dir="auto" class="left"><span class="fn nameRole">Srinivasa Addepalli</span></div>
+<div dir="auto" class="left"><span class="org">Aryaka</span></div>
+<div class="email">
+<span>Email:</span>
+<a href="mailto:srinivasa.addepalli@aryaka.com" class="email">srinivasa.addepalli@aryaka.com</a>
+</div>
+</address>
+</section>
+</div>
+<script>const toc = document.getElementById("toc");
+toc.querySelector("h2").addEventListener("click", e => {
+  toc.classList.toggle("active");
+});
+toc.querySelector("nav").addEventListener("click", e => {
+  toc.classList.remove("active");
+});
+</script>
+</body>
+</html>
