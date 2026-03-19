@@ -105,9 +105,9 @@ Token Exchange:
 This specification defines a proof-of-possession mechanism that binds OAuth 2.0 access tokens to the mTLS connection on which they are presented. While applicable to any OAuth 2.0 access token, it is primarily designed for tokens issued via the Token Exchange protocol {{!RFC8693}}, where multi-hop delegation creates elevated replay risk. The mechanism operates as follows:
 
 1.  The client and resource server establish an mTLS connection. Both sides derive a TLS Exporter value unique to this connection.
-2.  When presenting an access token, the client constructs a **Session-Binding Proof**: a JWT containing the hash of the access token, the TLS Exporter value, and the HTTP method and URI of the request.
-3.  The client signs this JWT with the private key corresponding to its mTLS client certificate.
-4.  The resource server verifies the proof by checking the signature against the client certificate's public key, confirming the exporter value matches the current connection, verifying the issuance time, and confirming the token hash matches the presented access token.
+2.  When presenting an access token on a new connection, the client constructs a **Session-Binding Proof**: a JWT containing the hash of the access token and the TLS Exporter value.
+3.  The client signs this JWT with the private key corresponding to its mTLS client certificate. The same proof MAY be reused for all subsequent requests using that token on the same connection.
+4.  The resource server verifies the proof by checking the signature against the client certificate's public key, confirming the exporter value matches the current connection, and confirming the token hash matches the presented access token. The server MAY cache the verification result and skip re-verification for subsequent requests with the same token on the same connection.
 
 A token that requires session binding includes a confirmation method claim (`tls_exp`) containing the TLS Exporter label, which signals to the resource server that the Session-Binding Proof MUST be presented and verified.
 
@@ -141,12 +141,14 @@ The `alg` value MUST match the key type of the client's mTLS certificate. The `x
 
 ### Payload
 
+The payload contains REQUIRED connection-level claims that prove session binding, and OPTIONAL per-request claims for intra-session hardening.
+
 ~~~json
 {
-  "jti": "<unique identifier>",
   "ath": "<base64url SHA-256 hash of the access token>",
   "ekm": "<base64url TLS Exporter value>",
   "iat": 1710820000,
+  "jti": "<unique identifier>",
   "htm": "POST",
   "htu": "/api/resource"
 }
@@ -154,8 +156,7 @@ The `alg` value MUST match the key type of the client's mTLS certificate. The `x
 
 The payload claims are defined as follows:
 
-jti:
-: REQUIRED. A unique identifier for the proof to prevent replay. The value MUST be unique per proof token and SHOULD be a UUID or equivalent.
+#### Connection-Level Claims (REQUIRED)
 
 ath:
 : REQUIRED. The base64url-encoded SHA-256 hash of the ASCII encoding of the associated access token value.
@@ -164,13 +165,20 @@ ekm:
 : REQUIRED. The base64url-encoded TLS Exporter value derived as specified in (#tls-exporter-derivation).
 
 iat:
-: REQUIRED. The time at which the proof was issued, as a NumericDate (seconds since the Unix epoch). The resource server MUST verify that this value is within an acceptable clock skew window.
+: REQUIRED. The time at which the proof was issued, as a NumericDate (seconds since the Unix epoch). The resource server MUST verify that this value is within an acceptable window.
+
+#### Per-Request Claims (OPTIONAL)
+
+The following claims provide intra-session request-level binding. They are OPTIONAL and intended for deployments that require defense-in-depth against intra-connection replay. When omitted, the proof can be reused across all requests on the same connection for the same token.
+
+jti:
+: OPTIONAL. A unique identifier for the proof. When present, the resource server MUST verify that this value has not been seen before within the token's validity period.
 
 htm:
-: REQUIRED. The HTTP method of the request to which the proof is attached (e.g., "GET", "POST").
+: OPTIONAL. The HTTP method of the request to which the proof is attached (e.g., "GET", "POST"). When present, the resource server MUST verify that it matches the actual request method.
 
 htu:
-: REQUIRED. The HTTP target URI of the request to which the proof is attached, without query and fragment parts.
+: OPTIONAL. The HTTP target URI of the request to which the proof is attached, without query and fragment parts. When present, the resource server MUST verify that it matches the actual request URI.
 
 ### Signature
 
@@ -193,7 +201,7 @@ x5t#S256:
 : REQUIRED. The certificate thumbprint as defined in {{!RFC8705}}.
 
 tls_exp:
-: REQUIRED. A string value containing the TLS Exporter label that the client and resource server MUST use to derive the session-binding value. The presence of this claim signals that the resource server MUST require and verify a Session-Binding Proof for every request using this token. This follows the pattern of existing `cnf` members which carry key/binding material rather than boolean flags (see {{!RFC7800}}).
+: REQUIRED. A string value containing the TLS Exporter label that the client and resource server MUST use to derive the session-binding value. The presence of this claim signals that the resource server MUST require a Session-Binding Proof when the token is first presented on a connection. This follows the pattern of existing `cnf` members which carry key/binding material rather than boolean flags (see {{!RFC7800}}).
 
 # Protocol Flow
 
@@ -226,7 +234,7 @@ The following diagram illustrates the complete flow:
 ~~~
  Client (with cert C)                          Resource Server
    |                                                    |
-   |=== mTLS handshake (client cert C) ================>|
+   |=== mTLS handshake (client cert C) =================>|
    |                                                    |
    |  [ONCE PER CONNECTION]                              |
    |  Both sides derive:                                |
@@ -234,47 +242,54 @@ The following diagram illustrates the complete flow:
    |      "EXPORTER-oauth-tls-session-bound",            |
    |      "", 32)                                       |
    |                                                    |
-   |  [PER HTTP REQUEST]                                 |
+   |  [ONCE PER (TOKEN, CONNECTION)]                     |
    |  Client constructs proof JWT:                      |
    |    header = { typ, alg, x5t#S256 }                 |
    |    payload = {                                     |
-   |      jti: <unique-id>,                             |
    |      ath: SHA256(access_token),                    |
-   |      ekm: EKM,       (cached from handshake)       |
-   |      iat: <unix_timestamp>,                        |
-   |      htm: "POST",                                  |
-   |      htu: "/api/resource"                          |
+   |      ekm: EKM,                                    |
+   |      iat: <unix_timestamp>                         |
    |    }                                               |
    |    sig = Sign(C.privateKey, header || payload)     |
    |                                                    |
-   |--- HTTP Request --------------------------------->|
+   |--- HTTP Request 1 -------------------------------->|
    |    Authorization: Bearer <access_token>            |
    |    Session-Binding-Proof: <proof_jwt>              |
    |                                                    |
-   |  Server verifies:          [PER HTTP REQUEST]       |
+   |  Server verifies:                                  |
    |    1. sig matches C.publicKey from mTLS            |
    |    2. ath matches SHA256(access_token)              |
-   |    3. ekm matches server-derived EKM (cached)       |
-   |    4. iat within acceptable skew window              |
-   |    5. htm/htu match actual request                  |
-   |    6. jti not previously seen                       |
+   |    3. ekm matches server-derived EKM               |
+   |    4. iat within acceptable window                  |
+   |    (caches: this token is bound to this conn)       |
+   |                                                    |
+   |<-- 200 OK ----------------------------------------|
+   |                                                    |
+   |--- HTTP Request 2 (same token, same proof) ------->|
+   |    Authorization: Bearer <access_token>            |
+   |    Session-Binding-Proof: <proof_jwt>  (reused)    |
+   |                                                    |
+   |  Server: cache hit — binding already verified       |
    |                                                    |
    |<-- 200 OK ----------------------------------------|
 ~~~
 
 ### Performance Characteristics
 
-The per-request cost of this mechanism is comparable to DPoP: one JWT signature (client-side) and one JWT verification plus one SHA-256 hash and one string comparison for the EKM (server-side). The key differences from DPoP are:
+Because the Session-Binding Proof requires only connection-level claims (`ekm`, `ath`) and does not contain request-specific data, the client constructs and signs the proof **once per (token, connection) pair** and reuses it for all subsequent requests. This provides a significant advantage over DPoP:
 
-*   **TLS Exporter derivation** is performed **once per mTLS connection** and cached by both sides. This is a single call to the TLS library after the handshake completes; the resulting value is reused for all subsequent requests on that connection.
-*   **No separate key management**: Unlike DPoP, which requires generating, storing, and rotating an ephemeral key pair independent of TLS, this specification reuses the mTLS key pair already established during the handshake. This eliminates an entire key lifecycle from the implementation.
-*   **Proof construction and verification** are performed **per HTTP request**, as each proof includes request-specific claims (`jti`, `iat`, `htm`, `htu`). This is the same per-request cost as DPoP.
+*   **Proof construction (client-side)**: One JWT signature per connection per token. DPoP requires one JWT signature per request.
+*   **Proof verification (server-side)**: Full JWT verification on first presentation; the server MAY cache the verified `(connection, ath)` binding and reduce subsequent verifications to a cache lookup. DPoP requires full JWT verification per request.
+*   **TLS Exporter derivation**: Once per connection, cached by both sides.
+*   **No separate key management**: Unlike DPoP, which requires generating, storing, and rotating an ephemeral key pair independent of TLS, this specification reuses the mTLS key pair. This eliminates an entire key lifecycle from the implementation.
+
+When OPTIONAL per-request claims (`jti`, `htm`, `htu`) are included, the proof must be constructed per request (similar to DPoP). Deployments choose between per-connection efficiency and per-request intra-session hardening based on their threat model.
 
 When the client presents the access token to a resource server:
 
 1.  The client establishes an mTLS connection with the resource server.
-2.  The client derives the TLS Exporter value for the current connection (this value is computed once per connection and cached).
-3.  The client constructs a Session-Binding Proof JWT as specified in (#session-binding-proof-format).
+2.  The client derives the TLS Exporter value for the current connection (computed once and cached).
+3.  The client constructs a Session-Binding Proof JWT as specified in (#session-binding-proof-format). If the proof does not contain per-request claims, the client MAY reuse the same proof for all subsequent requests using this token on this connection.
 4.  The client sends the HTTP request with:
     *   The access token in the `Authorization` header: `Authorization: Bearer <access_token>`
     *   The Session-Binding Proof in the `Session-Binding-Proof` header: `Session-Binding-Proof: <proof_jwt>`
@@ -286,11 +301,14 @@ When the client presents the access token to a resource server:
     c.  **Certificate binding**: Verifies that the `x5t#S256` in the token's `cnf` claim matches the presented client certificate.
     d.  **TLS binding required**: Checks that `cnf.tls_exp` is present and a Session-Binding Proof is present.
     e.  **Proof signature**: Verifies the proof JWT signature against the public key in the client certificate.
-    f.  **Exporter match**: Compares the `ekm` claim in the proof against the TLS Exporter value for the current connection (derived once and cached) and confirms they match.
+    f.  **Exporter match**: Compares the `ekm` claim in the proof against the TLS Exporter value for the current connection and confirms they match.
     g.  **Token hash**: Computes SHA-256 of the presented access token and confirms it matches the `ath` claim.
-    h.  **Timestamp**: Confirms `iat` is within the acceptable skew window.
-    i.  **Method and URI**: Confirms `htm` and `htu` match the actual request.
-    j.  **Uniqueness**: Confirms the `jti` has not been seen before within the token's validity period.
+    h.  **Timestamp**: Confirms `iat` is within an acceptable window.
+    i.  **Per-request claims** (when present): Confirms `htm` and `htu` match the actual request, and `jti` has not been seen before.
+
+    The resource server MUST perform steps (a) through (g) on every request. This is critical: an attacker who obtains a stolen token and proof may attempt to inject them on their own mTLS connection. Per-request verification ensures the proof signature is checked against the certificate from *this* connection's handshake, which will not match the attacker's certificate.
+
+    To optimize, the resource server MAY cache verified bindings keyed on `(connection_id, ath)`. A cache hit confirms the proof was already verified for this specific connection and token; a cache miss (different connection, different token, or first presentation) triggers full verification. This cache is inherently per-connection, so a stolen proof presented on a different connection will always miss and fail full verification.
 
 6.  If all verifications succeed, the resource server processes the request. If any verification fails, the resource server MUST reject the request as specified in (#error-responses).
 
@@ -325,12 +343,17 @@ This specification extends RFC 8705 by adding session-level binding on top of ce
 
 ## Relationship to RFC 9449 (DPoP)
 
-DPoP and this specification address similar goals (proof-of-possession) but use different mechanisms and binding targets:
+DPoP and this specification address similar goals (proof-of-possession) but differ in binding targets, key management, and per-request cost:
 
-*   **DPoP**: Applicable to both public and confidential clients. Particularly valuable for public clients that cannot use mTLS. Uses ephemeral, application-managed keys not bound to the TLS layer. Requires independent key generation, storage, and rotation.
-*   **This specification**: Designed for confidential clients and workloads that already use mTLS. Reuses the existing mTLS certificate key pair (no additional key management) and adds TLS channel binding via the Exporter value.
+*   **Binding target**: DPoP binds tokens to an ephemeral application-layer key. This specification binds tokens to both the client identity (X.509 certificate) and the specific TLS connection (Exporter value). An attacker who exfiltrates a DPoP-bound token and the associated DPoP key can replay the token from any network location; an attacker who exfiltrates a session-bound token cannot, because reproducing the TLS Exporter value requires being on the same TLS connection.
 
-In environments where both mTLS and DPoP are available, this specification provides stronger security guarantees because it binds to both the client identity (certificate) and the transport connection (exporter), while imposing less implementation complexity by eliminating the need for a separate proof-of-possession key pair.
+*   **Key management**: DPoP requires generating, storing, and rotating an ephemeral key pair independent of TLS. This specification reuses the mTLS key pair already established during the handshake, eliminating the entire DPoP key lifecycle.
+
+*   **Per-request overhead**: DPoP requires constructing and signing a new proof JWT for every HTTP request. This specification constructs the proof **once per (token, connection)** and reuses it across all requests on that connection (when per-request claims are omitted). This is a fundamental efficiency advantage in high-throughput workload-to-workload scenarios.
+
+*   **Applicability**: DPoP is particularly valuable for **public clients** that cannot use mTLS. This specification is designed for **confidential clients and workloads** that already use mTLS. The two mechanisms are complementary rather than competing.
+
+In summary, for mTLS-capable environments, this specification provides stronger security (connection-level binding vs. key-level binding), lower per-request cost (amortized proof vs. per-request proof), and simpler implementation (no separate key management).
 
 ## Relationship to WIMSE WIT/WPT
 
@@ -373,33 +396,51 @@ The backend resource server MUST use the forwarded exporter value (instead of it
 
 This section addresses security considerations in addition to those described in the OAuth 2.0 Security Best Current Practice {{!I-D.ietf-oauth-security-topics}}.
 
-## Addressed Threats
+## Threat Model
 
-### Cross-Connection Replay
+The following table summarizes the threats addressed by this specification, the specific mechanism that mitigates each threat, and whether DPoP provides equivalent protection.
 
-The TLS Exporter value is cryptographically derived from the TLS handshake transcript and is unique per TLS connection. An attacker who intercepts a bearer token cannot replay it on a different TLS connection because the exporter value will not match.
+### T1: Cross-Connection Token Replay
 
-### Cross-Host Replay
+*   **Threat**: An attacker intercepts a bearer token and presents it on a different TLS connection.
+*   **Mitigation**: The `ekm` claim in the proof is derived from the TLS handshake transcript and is unique per connection. The resource server compares it against its own locally-derived EKM. A replayed proof will fail the EKM comparison.
+*   **DPoP equivalent**: No. DPoP binds to an application-layer key, not to the TLS connection. If the DPoP key is also exfiltrated, replay succeeds.
 
-The Session-Binding Proof is signed with the client's mTLS private key. An attacker on a different host cannot produce a valid proof without possessing the private key.
+### T2: Cross-Host Token Replay
 
-### Token Exfiltration via LLM Prompt Injection
+*   **Threat**: An attacker on a different host obtains a bearer token and attempts to use it.
+*   **Mitigation**: The proof is signed with the client's mTLS private key. The resource server verifies the signature against the public key from the current mTLS handshake. A different host presents a different certificate, so signature verification fails.
+*   **DPoP equivalent**: Partial. DPoP binds to an ephemeral key, which may not be hardware-protected.
 
-Even if an AI agent's bearer token is exfiltrated via prompt injection, tool-call side channels, or log leakage, the attacker cannot produce a valid Session-Binding Proof because they lack both the client's private key and the ability to derive the TLS Exporter value from the legitimate session.
+### T3: Token Exfiltration via LLM Prompt Injection
 
-### Multi-Hop Delegation Chain Compromise
+*   **Threat**: A compromised or prompt-injected AI agent exfiltrates a bearer token via tool calls, side channels, or log leakage.
+*   **Mitigation**: The attacker obtains the token but cannot produce a valid proof. The mTLS private key resides in a separate process (e.g., a security sidecar, see (#appendix-sidecar)) or hardware module, inaccessible to the agent's LLM runtime. Even if the attacker also obtains the proof, the EKM will not match on a different connection.
+*   **DPoP equivalent**: No. DPoP keys are application-layer and typically reside in the same process as the agent, making co-exfiltration with the token likely.
 
-Each hop in a delegation chain (A→B→C→D) uses a distinct mTLS session with a distinct exporter value. A token stolen at any point in the chain is bound to that specific session and cannot be replayed on a different hop.
+### T4: Token + Proof Exfiltration (Both Stolen)
+
+*   **Threat**: An attacker obtains both the access token and the Session-Binding Proof.
+*   **Mitigation**: Two independent protections apply: (1) the attacker's mTLS certificate differs from the original client's, so the proof signature does not match the public key from the current handshake; (2) even with the same certificate, a different TLS connection produces a different EKM, so the `ekm` claim does not match.
+*   **DPoP equivalent**: No. If both the DPoP proof and the DPoP key are exfiltrated, the attacker can replay from any connection.
+
+### T5: Multi-Hop Delegation Chain Compromise
+
+*   **Threat**: A token is stolen at one hop in a delegation chain (A→B→C→D) and replayed at a different hop.
+*   **Mitigation**: Each hop uses a distinct mTLS connection with a distinct EKM. A token bound to one hop's connection cannot be replayed on another.
+*   **DPoP equivalent**: Partial. DPoP binds per key, but the key is not inherently tied to a specific hop's connection.
 
 ## Residual Risks
 
-### Intra-Session Replay
+### Intra-Connection Replay
 
-Within the same TLS session, an attacker with access to the channel (e.g., a compromised middleware component) could observe and replay requests. This risk is mitigated by:
+Within the same TLS connection, an attacker with access to the channel (e.g., a compromised middleware component) could observe and replay requests. This risk is mitigated by including the OPTIONAL per-request claims:
 
 *   The `jti` claim, which provides per-proof uniqueness when the server maintains a replay cache.
+*   The `htm` and `htu` claims, which bind the proof to a specific HTTP method and URI.
 *   Short `iat` validity windows that limit the temporal scope of any replay.
-*   An OPTIONAL server-issued nonce mechanism for environments requiring stronger intra-session replay protection.
+
+Deployments that require intra-connection replay protection SHOULD include per-request claims.
 
 ### Compromised Private Key
 
