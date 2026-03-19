@@ -551,17 +551,26 @@ The following diagram shows how a single HTTP request flows from the AI agent th
 ~~~
  AI Agent            Security Sidecar          Resource Server
     |                       |                         |
-    |  (1) HTTP Request     |                         |
+    |                       |=== mTLS handshake ======>|
+    |                       |                         |
+    |                       |  [ONCE PER CONNECTION]   |
+    |                       |  Both sides derive:     |
+    |                       |    EKM = TLS-Exporter(  |
+    |                       |      "EXPORTER-oauth-   |
+    |                       |       tls-session-      |
+    |                       |       bound", "", 32)   |
+    |                       |                         |
+    |  (1) HTTP Request 1   |                         |
     |  Authorization:       |                         |
     |    Bearer <token>     |                         |
     |  (plaintext, local)   |                         |
     +---------------------->|                         |
     |                       |                         |
-    |              (2) Sidecar:                       |
-    |              - Derives EKM (cached per conn)     |
-    |              - Computes ath = SHA256(token)       |
-    |              - Constructs proof JWT               |
-    |              - Signs with mTLS private key        |
+    |              (2) Sidecar (ONCE PER TOKEN, CONN):|
+    |              - Computes ath = SHA256(token)      |
+    |              - Constructs proof JWT:             |
+    |                  { ath, ekm: EKM, iat }         |
+    |              - Signs with mTLS private key       |
     |                       |                         |
     |                       |  (3) mTLS Request       |
     |                       |  Authorization:         |
@@ -570,13 +579,38 @@ The following diagram shows how a single HTTP request flows from the AI agent th
     |                       |    <proof_jwt>          |
     |                       +------------------------>|
     |                       |                         |
-    |                       |           (4) Server    |
-    |                       |           verifies      |
-    |                       |           proof         |
+    |                       |  (4) Server verifies:   |
+    |                       |  1. sig matches cert    |
+    |                       |  2. ath matches token   |
+    |                       |  3. ekm matches EKM    |
+    |                       |  4. iat in window       |
+    |                       |  (caches binding)       |
     |                       |                         |
     |                       |  (5) 200 OK             |
     |                       |<------------------------+
     |  (6) 200 OK           |                         |
+    |<----------------------+                         |
+    |                       |                         |
+    |  (7) HTTP Request 2   |                         |
+    |  Authorization:       |                         |
+    |    Bearer <token>     |                         |
+    +---------------------->|                         |
+    |                       |                         |
+    |              (8) Sidecar reuses proof            |
+    |                       |                         |
+    |                       |  (9) mTLS Request       |
+    |                       |  Authorization:         |
+    |                       |    Bearer <token>       |
+    |                       |  Session-Binding-Proof: |
+    |                       |    <proof_jwt> (reused) |
+    |                       +------------------------>|
+    |                       |                         |
+    |                       |  (10) Cache hit:        |
+    |                       |  binding verified       |
+    |                       |                         |
+    |                       |  (11) 200 OK            |
+    |                       |<------------------------+
+    |  (12) 200 OK          |                         |
     |<----------------------+                         |
     |                       |                         |
 ~~~
