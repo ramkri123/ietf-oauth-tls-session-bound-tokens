@@ -462,6 +462,98 @@ This specification registers the following TLS Exporter label in the IANA "TLS E
 
 {backmatter}
 
+# Sidecar Deployment for Agentic AI {#appendix-sidecar}
+
+In agentic AI architectures, a common deployment pattern places a security sidecar (e.g., Envoy, Istio proxy, or a purpose-built agent gateway) alongside each AI agent workload. This appendix describes how TLS-session-bound tokens integrate with this pattern and the resulting security benefits.
+
+## Architecture
+
+The following diagram shows the deployment layout. The AI agent and security sidecar run in the same pod or VM. The sidecar holds the mTLS private key and manages all authenticated outbound connections.
+
+~~~
+ +----------------------------------------------------+
+ |  Pod / VM                                          |
+ |                                                    |
+ |  +------------------+     +-------------------+    |
+ |  |   AI Agent       |     |   Security        |    |
+ |  |   (app logic,    |     |   Sidecar          |    |
+ |  |    LLM runtime)  |     |   (Envoy etc.)     |    |
+ |  |                  |     |                    |    |
+ |  |  Holds:          |     |  Holds:            |    |
+ |  |  - access tokens |     |  - mTLS private key|    |
+ |  |  - prompts       |     |  - X.509 cert      |    |
+ |  |  - app context   |     |  - EKM cache       |    |
+ |  |                  |     |                    |    |
+ |  |  Does NOT hold:  |     |  Constructs:       |    |
+ |  |  - private keys  |     |  - Binding Proof   |    |
+ |  +--------+---------+     +--------+----------+    |
+ |           |  plaintext HTTP         |               |
+ |           |  (loopback/UDS)         |  mTLS         |
+ |           +---------->-------------+|               |
+ |                                     |               |
+ +-------------------------------------+---------------+
+                                       |
+                                       v
+                              Remote Resource Server
+~~~
+
+## Request Flow
+
+The following diagram shows how a single HTTP request flows from the AI agent through the sidecar to the remote resource server. The sidecar transparently adds the Session-Binding Proof.
+
+~~~
+ AI Agent            Security Sidecar          Resource Server
+    |                       |                         |
+    |  (1) HTTP Request     |                         |
+    |  Authorization:       |                         |
+    |    Bearer <token>     |                         |
+    |  (plaintext, local)   |                         |
+    +---------------------->|                         |
+    |                       |                         |
+    |              (2) Sidecar:                       |
+    |              - Derives EKM (cached per conn)     |
+    |              - Computes ath = SHA256(token)       |
+    |              - Constructs proof JWT               |
+    |              - Signs with mTLS private key        |
+    |                       |                         |
+    |                       |  (3) mTLS Request       |
+    |                       |  Authorization:         |
+    |                       |    Bearer <token>       |
+    |                       |  Session-Binding-Proof: |
+    |                       |    <proof_jwt>          |
+    |                       +------------------------>|
+    |                       |                         |
+    |                       |           (4) Server    |
+    |                       |           verifies      |
+    |                       |           proof         |
+    |                       |                         |
+    |                       |  (5) 200 OK             |
+    |                       |<------------------------+
+    |  (6) 200 OK           |                         |
+    |<----------------------+                         |
+    |                       |                         |
+~~~
+
+## Security Benefits
+
+This architecture provides defense-in-depth against agentic AI threat vectors:
+
+*   **Prompt injection token exfiltration**: Even if a compromised LLM exfiltrates an access token via tool calls, log leakage, or side channels, the attacker cannot produce a valid Session-Binding Proof. The mTLS private key resides exclusively in the sidecar process, which is not accessible to the agent's application logic or LLM runtime.
+
+*   **Key isolation**: The agent never has access to the signing key. The sidecar can enforce hardware-backed key storage (TPM, HSM) independently of the agent's runtime environment.
+
+*   **Transparent integration**: The agent application code requires no modifications beyond standard OAuth token handling. The session binding is entirely transparent—the sidecar intercepts outbound requests and adds the proof.
+
+*   **Centralized policy enforcement**: The sidecar can apply additional policy checks (token scoping, rate limiting, destination allowlisting) before constructing the proof, providing a security control plane for agent traffic.
+
+*   **Audit boundary**: All authenticated outbound traffic passes through the sidecar, providing a natural audit point for logging which tokens were used, to which destinations, and when.
+
+## Relationship to Existing Infrastructure
+
+This deployment model aligns with the service mesh architecture used in SPIFFE/SPIRE environments, where the sidecar already manages workload identity certificates. When combined with Transitive Attestation {{!I-D.draft-mw-wimse-transitive-attestation}}, the sidecar can additionally attest that the agent is running in a verified execution environment while simultaneously binding all tokens to the active TLS connection.
+
+
+
 <reference anchor="RFC2119" target="https://www.rfc-editor.org/rfc/rfc2119">
   <front>
     <title>Key words for use in RFCs to Indicate Requirement Levels</title>
