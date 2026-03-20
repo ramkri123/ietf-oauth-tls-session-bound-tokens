@@ -101,11 +101,11 @@ Table of Contents
      4.4.  Relationship to Transitive Attestation  . . . . . . . . .  15
      4.5.  Relationship to RFC 8693 (Token Exchange) . . . . . . . .  15
    5.  TLS Proxy Considerations  . . . . . . . . . . . . . . . . . .  15
-     5.1.  Pass-Through mTLS . . . . . . . . . . . . . . . . . . . .  15
-     5.2.  TLS Termination at Proxy  . . . . . . . . . . . . . . . .  15
+     5.1.  Pass-Through mTLS . . . . . . . . . . . . . . . . . . . .  16
+     5.2.  TLS Termination at Proxy  . . . . . . . . . . . . . . . .  16
    6.  Security Considerations . . . . . . . . . . . . . . . . . . .  16
      6.1.  Threat Model  . . . . . . . . . . . . . . . . . . . . . .  16
-       6.1.1.  T1: Cross-Connection Token Replay . . . . . . . . . .  16
+       6.1.1.  T1: Cross-Connection Token Replay . . . . . . . . . .  17
 
 
 
@@ -117,21 +117,21 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
        6.1.2.  T2: Cross-Host Token Replay . . . . . . . . . . . . .  17
        6.1.3.  T3: Token Exfiltration via LLM Prompt Injection . . .  17
        6.1.4.  T4: Token + Proof Exfiltration (Both Stolen)  . . . .  17
-       6.1.5.  T5: Multi-Hop Delegation Chain Compromise . . . . . .  17
+       6.1.5.  T5: Multi-Hop Delegation Chain Compromise . . . . . .  18
      6.2.  Residual Risks  . . . . . . . . . . . . . . . . . . . . .  18
        6.2.1.  Intra-Connection Replay . . . . . . . . . . . . . . .  18
        6.2.2.  Compromised Private Key . . . . . . . . . . . . . . .  18
-       6.2.3.  TLS Proxy Trust . . . . . . . . . . . . . . . . . . .  18
-   7.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .  18
-     7.1.  OAuth Token Confirmation Methods  . . . . . . . . . . . .  18
+       6.2.3.  TLS Proxy Trust . . . . . . . . . . . . . . . . . . .  19
+   7.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .  19
+     7.1.  OAuth Token Confirmation Methods  . . . . . . . . . . . .  19
      7.2.  OAuth Dynamic Client Registration Metadata  . . . . . . .  19
      7.3.  HTTP Header Fields  . . . . . . . . . . . . . . . . . . .  19
        7.3.1.  Session-Binding-Proof . . . . . . . . . . . . . . . .  19
        7.3.2.  TLS-Exporter  . . . . . . . . . . . . . . . . . . . .  19
-     7.4.  TLS Exporter Label  . . . . . . . . . . . . . . . . . . .  19
-   8.  References  . . . . . . . . . . . . . . . . . . . . . . . . .  19
-     8.1.  Normative References  . . . . . . . . . . . . . . . . . .  19
-     8.2.  Informative References  . . . . . . . . . . . . . . . . .  20
+     7.4.  TLS Exporter Label  . . . . . . . . . . . . . . . . . . .  20
+   8.  References  . . . . . . . . . . . . . . . . . . . . . . . . .  20
+     8.1.  Normative References  . . . . . . . . . . . . . . . . . .  20
+     8.2.  Informative References  . . . . . . . . . . . . . . . . .  21
    Appendix A.  Sidecar Deployment for Agentic AI  . . . . . . . . .  21
      A.1.  Architecture  . . . . . . . . . . . . . . . . . . . . . .  21
      A.2.  Request Flow  . . . . . . . . . . . . . . . . . . . . . .  22
@@ -602,14 +602,14 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
 
 3.3.2.  Mid-Session Token Binding
 
-   A client MAY bind additional tokens to an existing mTLS connection at
-   any time.  When a new token is obtained (e.g., via token refresh, a
-   new token exchange, or rotation), the client constructs a fresh
-   Session-Binding Proof containing the new token's hash (ath) and the
-   same TLS Exporter value (ekm) from the current connection.  The
-   resource server verifies the new proof against the client certificate
-   from this connection's handshake and caches the new (connection_id,
-   ath) binding.  This allows token refresh and rotation without
+   A client MAY bind multiple tokens to a single mTLS connection
+   concurrently.  Each token requires its own Session-Binding Proof with
+   a distinct ath (token hash) and the same ekm (TLS Exporter value)
+   from the current connection.  The resource server caches each
+   (connection_id, ath) binding independently.
+
+
+
 
 
 
@@ -618,6 +618,14 @@ Krishnan, et al.        Expires 21 September 2026              [Page 11]
 Internet-Draft          TLS-Session-Bound-Tokens              March 2026
 
 
+   This is common in workload-to-workload scenarios: a single mTLS
+   connection between two microservices may carry requests on behalf of
+   many different users, each with a distinct access token obtained via
+   separate token exchanges.  For example, 100 users interacting with an
+   AI agentic service that delegates to a downstream service — each
+   user's token is bound to the same mTLS connection via a separate
+   proof.  Similarly, when a token is refreshed or rotated mid-session,
+   the client constructs a fresh proof for the new token without
    requiring a new mTLS connection.
 
    When the client presents the access token to a resource server:
@@ -658,14 +666,6 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
        *Per-request claims* (when present): Confirms htm and htu match
        the actual request, and jti has not been seen before.
 
-       The resource server MUST ensure that steps (a) through (h) are
-       satisfied for every request.  This is critical: an attacker who
-       obtains a stolen token and proof may attempt to inject them on
-       their own mTLS connection to the same resource server.
-       Verification ensures the proof signature is checked against the
-       certificate from _this_ connection's handshake, which will not
-       match the attacker's certificate.
-
 
 
 
@@ -673,6 +673,14 @@ Krishnan, et al.        Expires 21 September 2026              [Page 12]
 
 Internet-Draft          TLS-Session-Bound-Tokens              March 2026
 
+
+       The resource server MUST ensure that steps (a) through (h) are
+       satisfied for every request.  This is critical: an attacker who
+       obtains a stolen token and proof may attempt to inject them on
+       their own mTLS connection to the same resource server.
+       Verification ensures the proof signature is checked against the
+       certificate from _this_ connection's handshake, which will not
+       match the attacker's certificate.
 
        To satisfy this requirement efficiently, the resource server MAY
        cache verified bindings keyed on (connection_id, ath).  On
@@ -714,6 +722,14 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
       verification.  This includes signature verification failure,
       exporter mismatch, stale iat, jti reuse, ath mismatch, and htm/htu
       mismatch.
+
+
+
+Krishnan, et al.        Expires 21 September 2026              [Page 13]
+
+Internet-Draft          TLS-Session-Bound-Tokens              March 2026
+
+
    use_session_binding:  The access token requires a Session-Binding
       Proof (the cnf.tls_exp claim is present) but no Session-Binding-
       Proof header was provided.  This error signals to the client that
@@ -722,13 +738,6 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
    The resource server SHOULD include an error_description parameter
    with a human-readable explanation of the specific verification
    failure.
-
-
-
-Krishnan, et al.        Expires 21 September 2026              [Page 13]
-
-Internet-Draft          TLS-Session-Bound-Tokens              March 2026
-
 
 4.  Integration with Existing Mechanisms
 
@@ -767,15 +776,6 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
       are omitted).  This is a fundamental efficiency advantage in high-
       throughput workload-to-workload scenarios.
 
-   *  *Applicability*: DPoP is particularly valuable for *public
-      clients* that cannot use mTLS.  This specification is designed for
-      *confidential clients and workloads* that already use mTLS.  The
-      two mechanisms are complementary rather than competing.
-
-   In summary, for mTLS-capable environments, this specification
-   provides stronger security (connection-level binding vs. key-level
-   binding), lower per-request cost (amortized proof vs. per-request
-   proof), and simpler implementation (no separate key management).
 
 
 
@@ -785,6 +785,16 @@ Krishnan, et al.        Expires 21 September 2026              [Page 14]
 
 Internet-Draft          TLS-Session-Bound-Tokens              March 2026
 
+
+   *  *Applicability*: DPoP is particularly valuable for *public
+      clients* that cannot use mTLS.  This specification is designed for
+      *confidential clients and workloads* that already use mTLS.  The
+      two mechanisms are complementary rather than competing.
+
+   In summary, for mTLS-capable environments, this specification
+   provides stronger security (connection-level binding vs. key-level
+   binding), lower per-request cost (amortized proof vs. per-request
+   proof), and simpler implementation (no separate key management).
 
 4.3.  Relationship to WIMSE WIT/WPT
 
@@ -822,6 +832,16 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
 
 5.  TLS Proxy Considerations
 
+
+
+
+
+
+Krishnan, et al.        Expires 21 September 2026              [Page 15]
+
+Internet-Draft          TLS-Session-Bound-Tokens              March 2026
+
+
 5.1.  Pass-Through mTLS
 
    In deployments where TLS is terminated at the application server
@@ -834,13 +854,6 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
    When a TLS-terminating proxy (e.g., a load balancer or API gateway)
    sits between the client and the resource server, the proxy MUST
    forward the following information to the backend:
-
-
-
-Krishnan, et al.        Expires 21 September 2026              [Page 15]
-
-Internet-Draft          TLS-Session-Bound-Tokens              March 2026
-
 
    1.  The client certificate or its thumbprint, as specified in
        [RFC9440].
@@ -878,6 +891,13 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
    specification, the specific mechanism that mitigates each threat, and
    whether DPoP provides equivalent protection.
 
+
+
+Krishnan, et al.        Expires 21 September 2026              [Page 16]
+
+Internet-Draft          TLS-Session-Bound-Tokens              March 2026
+
+
 6.1.1.  T1: Cross-Connection Token Replay
 
    *  *Threat*: An attacker intercepts a bearer token and presents it on
@@ -889,14 +909,6 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
    *  *DPoP equivalent*: No.  DPoP binds to an application-layer key,
       not to the TLS connection.  If the DPoP key is also exfiltrated,
       replay succeeds.
-
-
-
-
-Krishnan, et al.        Expires 21 September 2026              [Page 16]
-
-Internet-Draft          TLS-Session-Bound-Tokens              March 2026
-
 
 6.1.2.  T2: Cross-Host Token Replay
 
@@ -928,6 +940,20 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
    *  *Threat*: An attacker obtains both the access token and the
       Session-Binding Proof, and attempts to use them on their own mTLS
       connection to the same resource server.
+
+
+
+
+
+
+
+
+
+Krishnan, et al.        Expires 21 September 2026              [Page 17]
+
+Internet-Draft          TLS-Session-Bound-Tokens              March 2026
+
+
    *  *Mitigation*: Two independent protections apply: (1) the
       attacker's mTLS certificate differs from the original client's, so
       the proof signature does not match the public key from the
@@ -946,14 +972,6 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
    *  *Mitigation*: Each hop uses a distinct mTLS connection with a
       distinct EKM.  A token bound to one hop's connection cannot be
       replayed on another.
-
-
-
-Krishnan, et al.        Expires 21 September 2026              [Page 17]
-
-Internet-Draft          TLS-Session-Bound-Tokens              March 2026
-
-
    *  *DPoP equivalent*: Partial.  DPoP binds per key, but the key is
       not inherently tied to a specific hop's connection.
 
@@ -983,6 +1001,15 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
 
    *  Hardware-backed key storage (TPM, HSM, TEE).
    *  Short-lived certificates (e.g., SPIFFE SVIDs with 1-hour expiry).
+
+
+
+
+Krishnan, et al.        Expires 21 September 2026              [Page 18]
+
+Internet-Draft          TLS-Session-Bound-Tokens              March 2026
+
+
    *  Transitive Attestation [I-D.draft-mw-wimse-transitive-attestation]
       for binding identity to a verified execution context.
 
@@ -1002,14 +1029,6 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
    [RFC7800]:
 
    *  *Confirmation Method Value*: tls_exp
-
-
-
-Krishnan, et al.        Expires 21 September 2026              [Page 18]
-
-Internet-Draft          TLS-Session-Bound-Tokens              March 2026
-
-
    *  *Confirmation Method Description*: TLS Exporter Session Binding
    *  *Change Controller*: IETF
    *  *Reference*: [this document]
@@ -1040,6 +1059,13 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
    *  *Status*: permanent
    *  *Reference*: [this document]
 
+
+
+Krishnan, et al.        Expires 21 September 2026              [Page 19]
+
+Internet-Draft          TLS-Session-Bound-Tokens              March 2026
+
+
 7.4.  TLS Exporter Label
 
    This specification registers the following TLS Exporter label in the
@@ -1057,14 +1083,6 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
    [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", March 1997,
               <https://www.rfc-editor.org/rfc/rfc2119>.
-
-
-
-
-Krishnan, et al.        Expires 21 September 2026              [Page 19]
-
-Internet-Draft          TLS-Session-Bound-Tokens              March 2026
-
 
    [RFC5705]  Rescorla, E., "Keying Material Exporters for Transport
               Layer Security (TLS)", March 2010,
@@ -1094,6 +1112,16 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
               and Certificate-Bound Access Tokens", February 2020,
               <https://www.rfc-editor.org/rfc/rfc8705>.
 
+
+
+
+
+
+Krishnan, et al.        Expires 21 September 2026              [Page 20]
+
+Internet-Draft          TLS-Session-Bound-Tokens              March 2026
+
+
    [RFC9440]  Campbell, B. and M. Bishop, "Client-Cert HTTP Header
               Field", July 2023,
               <https://www.rfc-editor.org/rfc/rfc9440>.
@@ -1110,17 +1138,6 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
               Workloads: A WIMSE Profile", March 2026,
               <https://datatracker.ietf.org/doc/html/draft-mw-wimse-
               transitive-attestation>.
-
-
-
-
-
-
-
-Krishnan, et al.        Expires 21 September 2026              [Page 20]
-
-Internet-Draft          TLS-Session-Bound-Tokens              March 2026
-
 
    [I-D.ietf-oauth-security-topics]
               Lodderstedt, T., Bradley, J., Labunets, A., and D. Fett,
@@ -1146,23 +1163,6 @@ A.1.  Architecture
    The following diagram shows the deployment layout.  The AI agent and
    security sidecar run in the same pod or VM.  The sidecar holds the
    mTLS private key and manages all authenticated outbound connections.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

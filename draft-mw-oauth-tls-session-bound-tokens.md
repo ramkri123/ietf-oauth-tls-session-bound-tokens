@@ -291,7 +291,9 @@ This amortization benefit assumes that mTLS connections are **long-lived** relat
 
 ### Mid-Session Token Binding
 
-A client MAY bind additional tokens to an existing mTLS connection at any time. When a new token is obtained (e.g., via token refresh, a new token exchange, or rotation), the client constructs a fresh Session-Binding Proof containing the new token's hash (`ath`) and the same TLS Exporter value (`ekm`) from the current connection. The resource server verifies the new proof against the client certificate from this connection's handshake and caches the new `(connection_id, ath)` binding. This allows token refresh and rotation without requiring a new mTLS connection.
+A client MAY bind multiple tokens to a single mTLS connection concurrently. Each token requires its own Session-Binding Proof with a distinct `ath` (token hash) and the same `ekm` (TLS Exporter value) from the current connection. The resource server caches each `(connection_id, ath)` binding independently.
+
+This is common in workload-to-workload scenarios: a single mTLS connection between two microservices may carry requests on behalf of many different users, each with a distinct access token obtained via separate token exchanges. For example, 100 users interacting with an AI agentic service that delegates to a downstream service — each user's token is bound to the same mTLS connection via a separate proof. Similarly, when a token is refreshed or rotated mid-session, the client constructs a fresh proof for the new token without requiring a new mTLS connection.
 
 When the client presents the access token to a resource server:
 
