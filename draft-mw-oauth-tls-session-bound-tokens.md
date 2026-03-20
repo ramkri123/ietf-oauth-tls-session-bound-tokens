@@ -287,7 +287,7 @@ Because the Session-Binding Proof contains only connection-level claims (`ekm`, 
 
 When OPTIONAL per-request claims (`jti`, `htm`, `htu`) are included, the proof must be constructed per request (similar to DPoP). Deployments choose between per-connection efficiency and per-request intra-session hardening based on their threat model.
 
-This amortization benefit assumes that mTLS connections are **long-lived** relative to the number of requests. If a deployment creates a new mTLS connection for every HTTP request-response cycle, the proof must be constructed on every request and the per-request cost becomes equivalent to DPoP. Deployments SHOULD use persistent connections (e.g., HTTP/2 or HTTP/1.1 with keep-alive) so that a single mTLS session carries many requests. This is already standard practice in service mesh and workload-to-workload environments where mTLS is terminated at a sidecar or gateway.
+This amortization benefit assumes that mTLS connections are **long-lived** relative to the number of requests. If a deployment creates a new mTLS connection for every HTTP request-response cycle, the proof must be constructed on every request and the per-request cost becomes equivalent to DPoP. Deployments SHOULD use persistent connections (e.g., HTTP/2 or HTTP/1.1 with keep-alive) so that a single mTLS connection carries many requests. This is already standard practice in service mesh and workload-to-workload environments where mTLS is terminated at a sidecar or gateway.
 
 ### Mid-Session Token Binding
 
@@ -318,7 +318,7 @@ When the client presents the access token to a resource server:
     h.  **Timestamp**: Confirms `iat` is within an acceptable window.
     i.  **Per-request claims** (when present): Confirms `htm` and `htu` match the actual request, and `jti` has not been seen before.
 
-    The resource server MUST ensure that steps (a) through (h) are satisfied for every request. This is critical: an attacker who obtains a stolen token and proof may attempt to inject them on their own mTLS connection to the same resource server. Verification ensures the proof signature is checked against the certificate from *this* connection's handshake, which will not match the attacker's certificate.
+    The resource server MUST ensure that steps (a) through (i) are satisfied for every request. This is critical: an attacker who obtains a stolen token and proof may attempt to inject them on their own mTLS connection to the same resource server. Verification ensures the proof signature is checked against the certificate from *this* connection's handshake, which will not match the attacker's certificate.
 
     To satisfy this requirement efficiently, the resource server MAY cache verified bindings keyed on `(connection_id, ath)`. On subsequent requests with the same token on the same connection, a cache hit confirms the binding was already verified; a cache miss (different connection, different token, or first presentation) triggers full verification. This cache is inherently per-connection, so a stolen proof presented on a different connection will always miss and fail full verification.
 
@@ -556,7 +556,7 @@ The following diagram shows the deployment layout. The AI agent and security sid
 
 ## Request Flow
 
-The following diagram shows how a single HTTP request flows from the AI agent through the sidecar to the remote resource server. The sidecar transparently adds the Session-Binding Proof.
+The following diagram shows how requests flow from the AI agent through the sidecar to the remote resource server. The sidecar transparently adds the Session-Binding Proof and reuses it for subsequent requests with the same token.
 
 ~~~
  AI Agent            Security Sidecar          Resource Server

@@ -1888,7 +1888,7 @@ li > p:last-of-type:only-child {
 </li>
           </ul>
 <p id="section-3.3.1-3">When OPTIONAL per-request claims (<code>jti</code>, <code>htm</code>, <code>htu</code>) are included, the proof must be constructed per request (similar to DPoP). Deployments choose between per-connection efficiency and per-request intra-session hardening based on their threat model.<a href="#section-3.3.1-3" class="pilcrow">¶</a></p>
-<p id="section-3.3.1-4">This amortization benefit assumes that mTLS connections are <strong>long-lived</strong> relative to the number of requests. If a deployment creates a new mTLS connection for every HTTP request-response cycle, the proof must be constructed on every request and the per-request cost becomes equivalent to DPoP. Deployments SHOULD use persistent connections (e.g., HTTP/2 or HTTP/1.1 with keep-alive) so that a single mTLS session carries many requests. This is already standard practice in service mesh and workload-to-workload environments where mTLS is terminated at a sidecar or gateway.<a href="#section-3.3.1-4" class="pilcrow">¶</a></p>
+<p id="section-3.3.1-4">This amortization benefit assumes that mTLS connections are <strong>long-lived</strong> relative to the number of requests. If a deployment creates a new mTLS connection for every HTTP request-response cycle, the proof must be constructed on every request and the per-request cost becomes equivalent to DPoP. Deployments SHOULD use persistent connections (e.g., HTTP/2 or HTTP/1.1 with keep-alive) so that a single mTLS connection carries many requests. This is already standard practice in service mesh and workload-to-workload environments where mTLS is terminated at a sidecar or gateway.<a href="#section-3.3.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="mid-session-token-binding">
@@ -1927,7 +1927,7 @@ f.  <strong>Exporter match</strong>: Compares the <code>ekm</code> claim in the 
 g.  <strong>Token hash</strong>: Computes SHA-256 of the presented access token and confirms it matches the <code>ath</code> claim.
 h.  <strong>Timestamp</strong>: Confirms <code>iat</code> is within an acceptable window.
 i.  <strong>Per-request claims</strong> (when present): Confirms <code>htm</code> and <code>htu</code> match the actual request, and <code>jti</code> has not been seen before.<a href="#section-3.3.2-5.5.2" class="pilcrow">¶</a></p>
-<p id="section-3.3.2-5.5.3">The resource server MUST ensure that steps (a) through (h) are satisfied for every request. This is critical: an attacker who obtains a stolen token and proof may attempt to inject them on their own mTLS connection to the same resource server. Verification ensures the proof signature is checked against the certificate from <em>this</em> connection's handshake, which will not match the attacker's certificate.<a href="#section-3.3.2-5.5.3" class="pilcrow">¶</a></p>
+<p id="section-3.3.2-5.5.3">The resource server MUST ensure that steps (a) through (i) are satisfied for every request. This is critical: an attacker who obtains a stolen token and proof may attempt to inject them on their own mTLS connection to the same resource server. Verification ensures the proof signature is checked against the certificate from <em>this</em> connection's handshake, which will not match the attacker's certificate.<a href="#section-3.3.2-5.5.3" class="pilcrow">¶</a></p>
 <p id="section-3.3.2-5.5.4">To satisfy this requirement efficiently, the resource server MAY cache verified bindings keyed on <code>(connection_id, ath)</code>. On subsequent requests with the same token on the same connection, a cache hit confirms the binding was already verified; a cache miss (different connection, different token, or first presentation) triggers full verification. This cache is inherently per-connection, so a stolen proof presented on a different connection will always miss and fail full verification.<a href="#section-3.3.2-5.5.4" class="pilcrow">¶</a></p>
 </li>
             <li id="section-3.3.2-5.6">
@@ -2466,7 +2466,7 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <code>htm</code
         <h3 id="name-request-flow">
 <a href="#appendix-A.2" class="section-number selfRef">A.2. </a><a href="#name-request-flow" class="section-name selfRef">Request Flow</a>
         </h3>
-<p id="appendix-A.2-1">The following diagram shows how a single HTTP request flows from the AI agent through the sidecar to the remote resource server. The sidecar transparently adds the Session-Binding Proof.<a href="#appendix-A.2-1" class="pilcrow">¶</a></p>
+<p id="appendix-A.2-1">The following diagram shows how requests flow from the AI agent through the sidecar to the remote resource server. The sidecar transparently adds the Session-Binding Proof and reuses it for subsequent requests with the same token.<a href="#appendix-A.2-1" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="appendix-A.2-2">
 <pre> AI Agent            Security Sidecar          Resource Server
     |                       |                         |

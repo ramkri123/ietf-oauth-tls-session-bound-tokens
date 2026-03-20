@@ -596,8 +596,8 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
    must be constructed on every request and the per-request cost becomes
    equivalent to DPoP.  Deployments SHOULD use persistent connections
    (e.g., HTTP/2 or HTTP/1.1 with keep-alive) so that a single mTLS
-   session carries many requests.  This is already standard practice in
-   service mesh and workload-to-workload environments where mTLS is
+   connection carries many requests.  This is already standard practice
+   in service mesh and workload-to-workload environments where mTLS is
    terminated at a sidecar or gateway.
 
 3.3.2.  Mid-Session Token Binding
@@ -680,7 +680,7 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
        *Per-request claims* (when present): Confirms htm and htu match
        the actual request, and jti has not been seen before.
 
-       The resource server MUST ensure that steps (a) through (h) are
+       The resource server MUST ensure that steps (a) through (i) are
        satisfied for every request.  This is critical: an attacker who
        obtains a stolen token and proof may attempt to inject them on
        their own mTLS connection to the same resource server.
@@ -1205,9 +1205,10 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
 
 A.2.  Request Flow
 
-   The following diagram shows how a single HTTP request flows from the
-   AI agent through the sidecar to the remote resource server.  The
-   sidecar transparently adds the Session-Binding Proof.
+   The following diagram shows how requests flow from the AI agent
+   through the sidecar to the remote resource server.  The sidecar
+   transparently adds the Session-Binding Proof and reuses it for
+   subsequent requests with the same token.
 
     AI Agent            Security Sidecar          Resource Server
        |                       |                         |
@@ -1225,7 +1226,6 @@ A.2.  Request Flow
        |    Bearer <token>     |                         |
        |  (plaintext, local)   |                         |
        +---------------------->|                         |
-       |                       |                         |
 
 
 
@@ -1234,6 +1234,7 @@ Krishnan, et al.        Expires 21 September 2026              [Page 22]
 Internet-Draft          TLS-Session-Bound-Tokens              March 2026
 
 
+       |                       |                         |
        |              (2) Sidecar (ONCE PER TOKEN, CONN):|
        |              - Computes ath = SHA256(token)      |
        |              - Constructs proof JWT:             |
@@ -1281,7 +1282,6 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
        |  (12) 200 OK          |                         |
        |<----------------------+                         |
        |                       |                         |
-
 
 
 
