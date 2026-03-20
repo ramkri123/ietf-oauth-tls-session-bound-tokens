@@ -1380,6 +1380,9 @@ li > p:last-of-type:only-child {
 <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.3.2.1">
                     <p id="section-toc.1-1.3.2.3.2.1.1"><a href="#section-3.3.1" class="auto internal xref">3.3.1</a>.  <a href="#name-performance-characteristics" class="internal xref">Performance Characteristics</a></p>
 </li>
+                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.3.2.2">
+                    <p id="section-toc.1-1.3.2.3.2.2.1"><a href="#section-3.3.2" class="auto internal xref">3.3.2</a>.  <a href="#name-mid-session-token-binding" class="internal xref">Mid-Session Token Binding</a></p>
+</li>
                 </ul>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.4">
@@ -1885,26 +1888,35 @@ li > p:last-of-type:only-child {
 </li>
           </ul>
 <p id="section-3.3.1-3">When OPTIONAL per-request claims (<code>jti</code>, <code>htm</code>, <code>htu</code>) are included, the proof must be constructed per request (similar to DPoP). Deployments choose between per-connection efficiency and per-request intra-session hardening based on their threat model.<a href="#section-3.3.1-3" class="pilcrow">¶</a></p>
-<p id="section-3.3.1-4">When the client presents the access token to a resource server:<a href="#section-3.3.1-4" class="pilcrow">¶</a></p>
-<ol start="1" type="1" class="normal type-1" id="section-3.3.1-5">
-<li id="section-3.3.1-5.1">The client establishes an mTLS connection with the resource server.<a href="#section-3.3.1-5.1" class="pilcrow">¶</a>
+<p id="section-3.3.1-4">This amortization benefit assumes that mTLS connections are <strong>long-lived</strong> relative to the number of requests. If a deployment creates a new mTLS connection for every HTTP request-response cycle, the proof must be constructed on every request and the per-request cost becomes equivalent to DPoP. Deployments SHOULD use persistent connections (e.g., HTTP/2 or HTTP/1.1 with keep-alive) so that a single mTLS session carries many requests. This is already standard practice in service mesh and workload-to-workload environments where mTLS is terminated at a sidecar or gateway.<a href="#section-3.3.1-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="mid-session-token-binding">
+<section id="section-3.3.2">
+          <h4 id="name-mid-session-token-binding">
+<a href="#section-3.3.2" class="section-number selfRef">3.3.2. </a><a href="#name-mid-session-token-binding" class="section-name selfRef">Mid-Session Token Binding</a>
+          </h4>
+<p id="section-3.3.2-1">A client MAY bind additional tokens to an existing mTLS connection at any time. When a new token is obtained (e.g., via token refresh, a new token exchange, or rotation), the client constructs a fresh Session-Binding Proof containing the new token's hash (<code>ath</code>) and the same TLS Exporter value (<code>ekm</code>) from the current connection. The resource server verifies the new proof against the client certificate from this connection's handshake and caches the new <code>(connection_id, ath)</code> binding. This allows token refresh and rotation without requiring a new mTLS connection.<a href="#section-3.3.2-1" class="pilcrow">¶</a></p>
+<p id="section-3.3.2-2">When the client presents the access token to a resource server:<a href="#section-3.3.2-2" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="normal type-1" id="section-3.3.2-3">
+<li id="section-3.3.2-3.1">The client establishes an mTLS connection with the resource server.<a href="#section-3.3.2-3.1" class="pilcrow">¶</a>
 </li>
-            <li id="section-3.3.1-5.2">The client derives the TLS Exporter value for the current connection (computed once and cached).<a href="#section-3.3.1-5.2" class="pilcrow">¶</a>
+            <li id="section-3.3.2-3.2">The client derives the TLS Exporter value for the current connection (computed once and cached).<a href="#section-3.3.2-3.2" class="pilcrow">¶</a>
 </li>
-            <li id="section-3.3.1-5.3">The client constructs a Session-Binding Proof JWT as specified in <a href="#session-binding-proof-format" class="auto internal xref">Section 2.3</a>. If the proof does not contain per-request claims, the client MAY reuse the same proof for all subsequent requests using this token on this connection.<a href="#section-3.3.1-5.3" class="pilcrow">¶</a>
+            <li id="section-3.3.2-3.3">The client constructs a Session-Binding Proof JWT as specified in <a href="#session-binding-proof-format" class="auto internal xref">Section 2.3</a>. If the proof does not contain per-request claims, the client MAY reuse the same proof for all subsequent requests using this token on this connection.<a href="#section-3.3.2-3.3" class="pilcrow">¶</a>
 </li>
-            <li id="section-3.3.1-5.4">
-              <p id="section-3.3.1-5.4.1">The client sends the HTTP request with:<a href="#section-3.3.1-5.4.1" class="pilcrow">¶</a></p>
+            <li id="section-3.3.2-3.4">
+              <p id="section-3.3.2-3.4.1">The client sends the HTTP request with:<a href="#section-3.3.2-3.4.1" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="section-3.3.1-5.4.2.1">The access token in the <code>Authorization</code> header: <code>Authorization: Bearer &lt;access_token&gt;</code><a href="#section-3.3.1-5.4.2.1" class="pilcrow">¶</a>
+<li class="compact" id="section-3.3.2-3.4.2.1">The access token in the <code>Authorization</code> header: <code>Authorization: Bearer &lt;access_token&gt;</code><a href="#section-3.3.2-3.4.2.1" class="pilcrow">¶</a>
 </li>
-                <li class="compact" id="section-3.3.1-5.4.2.2">The Session-Binding Proof in the <code>Session-Binding-Proof</code> header: <code>Session-Binding-Proof: &lt;proof_jwt&gt;</code><a href="#section-3.3.1-5.4.2.2" class="pilcrow">¶</a>
+                <li class="compact" id="section-3.3.2-3.4.2.2">The Session-Binding Proof in the <code>Session-Binding-Proof</code> header: <code>Session-Binding-Proof: &lt;proof_jwt&gt;</code><a href="#section-3.3.2-3.4.2.2" class="pilcrow">¶</a>
 </li>
               </ul>
 </li>
-            <li id="section-3.3.1-5.5">
-              <p id="section-3.3.1-5.5.1">The resource server performs the following verifications:<a href="#section-3.3.1-5.5.1" class="pilcrow">¶</a></p>
-<p id="section-3.3.1-5.5.2">a.  <strong>Standard mTLS verification</strong>: Verifies the client certificate as part of the TLS handshake.
+            <li id="section-3.3.2-3.5">
+              <p id="section-3.3.2-3.5.1">The resource server performs the following verifications:<a href="#section-3.3.2-3.5.1" class="pilcrow">¶</a></p>
+<p id="section-3.3.2-3.5.2">a.  <strong>Standard mTLS verification</strong>: Verifies the client certificate as part of the TLS handshake.
 b.  <strong>Token validation</strong>: Validates the access token (signature, expiration, audience, etc.).
 c.  <strong>Certificate binding</strong>: Verifies that the <code>x5t#S256</code> in the token's <code>cnf</code> claim matches the presented client certificate.
 d.  <strong>TLS binding required</strong>: Checks that <code>cnf.tls_exp</code> is present and a Session-Binding Proof is present.
@@ -1912,12 +1924,12 @@ e.  <strong>Proof signature</strong>: Verifies the proof JWT signature against t
 f.  <strong>Exporter match</strong>: Compares the <code>ekm</code> claim in the proof against the TLS Exporter value for the current connection and confirms they match.
 g.  <strong>Token hash</strong>: Computes SHA-256 of the presented access token and confirms it matches the <code>ath</code> claim.
 h.  <strong>Timestamp</strong>: Confirms <code>iat</code> is within an acceptable window.
-i.  <strong>Per-request claims</strong> (when present): Confirms <code>htm</code> and <code>htu</code> match the actual request, and <code>jti</code> has not been seen before.<a href="#section-3.3.1-5.5.2" class="pilcrow">¶</a></p>
-<p id="section-3.3.1-5.5.3">The resource server MUST ensure that steps (a) through (h) are satisfied for every request. This is critical: an attacker who obtains a stolen token and proof may attempt to inject them on their own mTLS connection to the same resource server. Verification ensures the proof signature is checked against the certificate from <em>this</em> connection's handshake, which will not match the attacker's certificate.<a href="#section-3.3.1-5.5.3" class="pilcrow">¶</a></p>
-<p id="section-3.3.1-5.5.4">To satisfy this requirement efficiently, the resource server MAY cache verified bindings keyed on <code>(connection_id, ath)</code>. On subsequent requests with the same token on the same connection, a cache hit confirms the binding was already verified; a cache miss (different connection, different token, or first presentation) triggers full verification. This cache is inherently per-connection, so a stolen proof presented on a different connection will always miss and fail full verification.<a href="#section-3.3.1-5.5.4" class="pilcrow">¶</a></p>
+i.  <strong>Per-request claims</strong> (when present): Confirms <code>htm</code> and <code>htu</code> match the actual request, and <code>jti</code> has not been seen before.<a href="#section-3.3.2-3.5.2" class="pilcrow">¶</a></p>
+<p id="section-3.3.2-3.5.3">The resource server MUST ensure that steps (a) through (h) are satisfied for every request. This is critical: an attacker who obtains a stolen token and proof may attempt to inject them on their own mTLS connection to the same resource server. Verification ensures the proof signature is checked against the certificate from <em>this</em> connection's handshake, which will not match the attacker's certificate.<a href="#section-3.3.2-3.5.3" class="pilcrow">¶</a></p>
+<p id="section-3.3.2-3.5.4">To satisfy this requirement efficiently, the resource server MAY cache verified bindings keyed on <code>(connection_id, ath)</code>. On subsequent requests with the same token on the same connection, a cache hit confirms the binding was already verified; a cache miss (different connection, different token, or first presentation) triggers full verification. This cache is inherently per-connection, so a stolen proof presented on a different connection will always miss and fail full verification.<a href="#section-3.3.2-3.5.4" class="pilcrow">¶</a></p>
 </li>
-            <li id="section-3.3.1-5.6">
-              <p id="section-3.3.1-5.6.1">If all verifications succeed, the resource server processes the request. If any verification fails, the resource server MUST reject the request as specified in <a href="#error-responses" class="auto internal xref">Section 3.5</a>.<a href="#section-3.3.1-5.6.1" class="pilcrow">¶</a></p>
+            <li id="section-3.3.2-3.6">
+              <p id="section-3.3.2-3.6.1">If all verifications succeed, the resource server processes the request. If any verification fails, the resource server MUST reject the request as specified in <a href="#error-responses" class="auto internal xref">Section 3.5</a>.<a href="#section-3.3.2-3.6.1" class="pilcrow">¶</a></p>
 </li>
           </ol>
 </section>

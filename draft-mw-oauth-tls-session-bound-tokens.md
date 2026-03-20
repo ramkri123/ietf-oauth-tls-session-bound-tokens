@@ -287,6 +287,12 @@ Because the Session-Binding Proof contains only connection-level claims (`ekm`, 
 
 When OPTIONAL per-request claims (`jti`, `htm`, `htu`) are included, the proof must be constructed per request (similar to DPoP). Deployments choose between per-connection efficiency and per-request intra-session hardening based on their threat model.
 
+This amortization benefit assumes that mTLS connections are **long-lived** relative to the number of requests. If a deployment creates a new mTLS connection for every HTTP request-response cycle, the proof must be constructed on every request and the per-request cost becomes equivalent to DPoP. Deployments SHOULD use persistent connections (e.g., HTTP/2 or HTTP/1.1 with keep-alive) so that a single mTLS session carries many requests. This is already standard practice in service mesh and workload-to-workload environments where mTLS is terminated at a sidecar or gateway.
+
+### Mid-Session Token Binding
+
+A client MAY bind additional tokens to an existing mTLS connection at any time. When a new token is obtained (e.g., via token refresh, a new token exchange, or rotation), the client constructs a fresh Session-Binding Proof containing the new token's hash (`ath`) and the same TLS Exporter value (`ekm`) from the current connection. The resource server verifies the new proof against the client certificate from this connection's handshake and caches the new `(connection_id, ath)` binding. This allows token refresh and rotation without requiring a new mTLS connection.
+
 When the client presents the access token to a resource server:
 
 1.  The client establishes an mTLS connection with the resource server.
