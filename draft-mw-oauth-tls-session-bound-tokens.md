@@ -291,9 +291,11 @@ This amortization benefit assumes that mTLS connections are **long-lived** relat
 
 ### Mid-Session Token Binding
 
-A client MAY bind multiple tokens to a single mTLS connection concurrently. Each token requires its own Session-Binding Proof with a distinct `ath` (token hash) and the same `ekm` (TLS Exporter value) from the current connection. The resource server caches each `(connection_id, ath)` binding independently.
+A client MAY bind multiple tokens to a single mTLS connection concurrently. Each token requires its own Session-Binding Proof with a distinct `ath` (token hash) and the same `ekm` (TLS Exporter value) from the current connection.
 
 This is common in workload-to-workload scenarios: a single mTLS connection between two microservices may carry requests on behalf of many different users, each with a distinct access token obtained via separate token exchanges. For example, 100 users interacting with an AI agentic service that delegates to a downstream service — each user's token is bound to the same mTLS connection via a separate proof. Similarly, when a token is refreshed or rotated mid-session, the client constructs a fresh proof for the new token without requiring a new mTLS connection.
+
+The resource server MAY cache verified `(connection_id, ath)` bindings to avoid re-verifying proofs on subsequent requests. Each cache entry is small (a connection identifier plus a 32-byte hash), so even connections carrying hundreds of tokens have modest memory requirements. Caching is an optimization, not a requirement: if the server does not cache (or evicts entries under memory pressure), it simply falls back to full JWT signature verification on every request — equivalent to the per-request cost of DPoP.
 
 When the client presents the access token to a resource server:
 

@@ -100,11 +100,11 @@ Table of Contents
      4.3.  Relationship to WIMSE WIT/WPT . . . . . . . . . . . . . .  15
      4.4.  Relationship to Transitive Attestation  . . . . . . . . .  15
      4.5.  Relationship to RFC 8693 (Token Exchange) . . . . . . . .  15
-   5.  TLS Proxy Considerations  . . . . . . . . . . . . . . . . . .  15
+   5.  TLS Proxy Considerations  . . . . . . . . . . . . . . . . . .  16
      5.1.  Pass-Through mTLS . . . . . . . . . . . . . . . . . . . .  16
      5.2.  TLS Termination at Proxy  . . . . . . . . . . . . . . . .  16
    6.  Security Considerations . . . . . . . . . . . . . . . . . . .  16
-     6.1.  Threat Model  . . . . . . . . . . . . . . . . . . . . . .  16
+     6.1.  Threat Model  . . . . . . . . . . . . . . . . . . . . . .  17
        6.1.1.  T1: Cross-Connection Token Replay . . . . . . . . . .  17
 
 
@@ -605,11 +605,11 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
    A client MAY bind multiple tokens to a single mTLS connection
    concurrently.  Each token requires its own Session-Binding Proof with
    a distinct ath (token hash) and the same ekm (TLS Exporter value)
-   from the current connection.  The resource server caches each
-   (connection_id, ath) binding independently.
+   from the current connection.
 
-
-
+   This is common in workload-to-workload scenarios: a single mTLS
+   connection between two microservices may carry requests on behalf of
+   many different users, each with a distinct access token obtained via
 
 
 
@@ -618,15 +618,21 @@ Krishnan, et al.        Expires 21 September 2026              [Page 11]
 Internet-Draft          TLS-Session-Bound-Tokens              March 2026
 
 
-   This is common in workload-to-workload scenarios: a single mTLS
-   connection between two microservices may carry requests on behalf of
-   many different users, each with a distinct access token obtained via
    separate token exchanges.  For example, 100 users interacting with an
    AI agentic service that delegates to a downstream service — each
    user's token is bound to the same mTLS connection via a separate
    proof.  Similarly, when a token is refreshed or rotated mid-session,
    the client constructs a fresh proof for the new token without
    requiring a new mTLS connection.
+
+   The resource server MAY cache verified (connection_id, ath) bindings
+   to avoid re-verifying proofs on subsequent requests.  Each cache
+   entry is small (a connection identifier plus a 32-byte hash), so even
+   connections carrying hundreds of tokens have modest memory
+   requirements.  Caching is an optimization, not a requirement: if the
+   server does not cache (or evicts entries under memory pressure), it
+   simply falls back to full JWT signature verification on every request
+   — equivalent to the per-request cost of DPoP.
 
    When the client presents the access token to a resource server:
 
@@ -660,12 +666,6 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
        the proof JWT signature against the public key in the client
        certificate. f.  *Exporter match*: Compares the ekm claim in the
        proof against the TLS Exporter value for the current connection
-       and confirms they match. g.  *Token hash*: Computes SHA-256 of
-       the presented access token and confirms it matches the ath claim.
-       h.  *Timestamp*: Confirms iat is within an acceptable window. i.
-       *Per-request claims* (when present): Confirms htm and htu match
-       the actual request, and jti has not been seen before.
-
 
 
 
@@ -673,6 +673,12 @@ Krishnan, et al.        Expires 21 September 2026              [Page 12]
 
 Internet-Draft          TLS-Session-Bound-Tokens              March 2026
 
+
+       and confirms they match. g.  *Token hash*: Computes SHA-256 of
+       the presented access token and confirms it matches the ath claim.
+       h.  *Timestamp*: Confirms iat is within an acceptable window. i.
+       *Per-request claims* (when present): Confirms htm and htu match
+       the actual request, and jti has not been seen before.
 
        The resource server MUST ensure that steps (a) through (h) are
        satisfied for every request.  This is critical: an attacker who
@@ -716,12 +722,6 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
    WWW-Authenticate: Bearer error="use_session_binding",
      error_description="This token requires a Session-Binding Proof"
 
-   The following error code values are defined:
-
-   invalid_proof:  The Session-Binding Proof is malformed or failed
-      verification.  This includes signature verification failure,
-      exporter mismatch, stale iat, jti reuse, ath mismatch, and htm/htu
-      mismatch.
 
 
 
@@ -730,6 +730,12 @@ Krishnan, et al.        Expires 21 September 2026              [Page 13]
 Internet-Draft          TLS-Session-Bound-Tokens              March 2026
 
 
+   The following error code values are defined:
+
+   invalid_proof:  The Session-Binding Proof is malformed or failed
+      verification.  This includes signature verification failure,
+      exporter mismatch, stale iat, jti reuse, ath mismatch, and htm/htu
+      mismatch.
    use_session_binding:  The access token requires a Session-Binding
       Proof (the cnf.tls_exp claim is present) but no Session-Binding-
       Proof header was provided.  This error signals to the client that
@@ -772,12 +778,6 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
    *  *Per-request overhead*: DPoP requires constructing and signing a
       new proof JWT for every HTTP request.  This specification
       constructs the proof *once per (token, connection)* and reuses it
-      across all requests on that connection (when per-request claims
-      are omitted).  This is a fundamental efficiency advantage in high-
-      throughput workload-to-workload scenarios.
-
-
-
 
 
 
@@ -785,6 +785,10 @@ Krishnan, et al.        Expires 21 September 2026              [Page 14]
 
 Internet-Draft          TLS-Session-Bound-Tokens              March 2026
 
+
+      across all requests on that connection (when per-request claims
+      are omitted).  This is a fundamental efficiency advantage in high-
+      throughput workload-to-workload scenarios.
 
    *  *Applicability*: DPoP is particularly valuable for *public
       clients* that cannot use mTLS.  This specification is designed for
@@ -830,10 +834,6 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
    radius of any single token compromise to the specific TLS connection
    on which it is presented.
 
-5.  TLS Proxy Considerations
-
-
-
 
 
 
@@ -841,6 +841,8 @@ Krishnan, et al.        Expires 21 September 2026              [Page 15]
 
 Internet-Draft          TLS-Session-Bound-Tokens              March 2026
 
+
+5.  TLS Proxy Considerations
 
 5.1.  Pass-Through mTLS
 
@@ -885,11 +887,9 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
    described in the OAuth 2.0 Security Best Current Practice
    [I-D.ietf-oauth-security-topics].
 
-6.1.  Threat Model
 
-   The following table summarizes the threats addressed by this
-   specification, the specific mechanism that mitigates each threat, and
-   whether DPoP provides equivalent protection.
+
+
 
 
 
@@ -897,6 +897,12 @@ Krishnan, et al.        Expires 21 September 2026              [Page 16]
 
 Internet-Draft          TLS-Session-Bound-Tokens              March 2026
 
+
+6.1.  Threat Model
+
+   The following table summarizes the threats addressed by this
+   specification, the specific mechanism that mitigates each threat, and
+   whether DPoP provides equivalent protection.
 
 6.1.1.  T1: Cross-Connection Token Replay
 
@@ -940,12 +946,6 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
    *  *Threat*: An attacker obtains both the access token and the
       Session-Binding Proof, and attempts to use them on their own mTLS
       connection to the same resource server.
-
-
-
-
-
-
 
 
 
