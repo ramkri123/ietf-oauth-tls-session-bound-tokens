@@ -139,10 +139,10 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
      A.1.  Architecture  . . . . . . . . . . . . . . . . . . . . . .  22
      A.2.  Request Flow  . . . . . . . . . . . . . . . . . . . . . .  23
      A.3.  HTTP/2 Multi-User Multiplexing  . . . . . . . . . . . . .  25
-     A.4.  Security Benefits . . . . . . . . . . . . . . . . . . . .  25
+     A.4.  Security Benefits . . . . . . . . . . . . . . . . . . . .  26
      A.5.  Relationship to Existing Infrastructure . . . . . . . . .  26
      A.6.  Implementation Considerations . . . . . . . . . . . . . .  26
-       A.6.1.  Connection Lifecycle Management . . . . . . . . . . .  26
+       A.6.1.  Connection Lifecycle Management . . . . . . . . . . .  27
    Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  27
 
 1.  Introduction
@@ -1387,13 +1387,13 @@ A.3.  HTTP/2 Multi-User Multiplexing
    N users and M requests per user, the total signing cost is N (one per
    token) rather than N×M (one per request as with DPoP).
 
-A.4.  Security Benefits
-
-   This architecture provides defense-in-depth against agentic AI threat
-   vectors:
-
-
-
+   Note: Industry measurements indicate that AI-driven bot and agent
+   traffic is growing rapidly and may exceed human-initiated web traffic
+   within the next few years.  In such environments, the per-request
+   signing cost of mechanisms like DPoP becomes a significant scaling
+   bottleneck.  The per-connection amortization provided by this
+   specification is designed to remain efficient at these traffic
+   volumes.
 
 
 
@@ -1401,6 +1401,11 @@ Krishnan, et al.        Expires 21 September 2026              [Page 25]
 
 Internet-Draft          TLS-Session-Bound-Tokens              March 2026
 
+
+A.4.  Security Benefits
+
+   This architecture provides defense-in-depth against agentic AI threat
+   vectors:
 
    *  *Prompt injection token exfiltration*: Even if a compromised LLM
       exfiltrates an access token via tool calls, log leakage, or side
@@ -1444,11 +1449,6 @@ A.6.  Implementation Considerations
    Proof.  See Section 2.2 for the general implementation note on TLS
    Exporter API availability across TLS libraries and frameworks.
 
-A.6.1.  Connection Lifecycle Management
-
-   Sidecars that implement this specification should handle TLS
-   connection lifecycle events to manage the EKM and proof caches
-   correctly.  A typical implementation uses a layered architecture:
 
 
 
@@ -1457,6 +1457,12 @@ Krishnan, et al.        Expires 21 September 2026              [Page 26]
 
 Internet-Draft          TLS-Session-Bound-Tokens              March 2026
 
+
+A.6.1.  Connection Lifecycle Management
+
+   Sidecars that implement this specification should handle TLS
+   connection lifecycle events to manage the EKM and proof caches
+   correctly.  A typical implementation uses a layered architecture:
 
    *  *Connection-level layer* (e.g., a network filter or transport
       callback): Derives the EKM when a new mTLS connection is
@@ -1498,12 +1504,6 @@ Authors' Addresses
    Srinivasa Addepalli
    Aryaka
    Email: srinivasa.addepalli@aryaka.com
-
-
-
-
-
-
 
 
 

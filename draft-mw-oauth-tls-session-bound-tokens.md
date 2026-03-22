@@ -673,6 +673,8 @@ In a typical agentic deployment, Agent A serves multiple users concurrently. Eac
 
 Each token is signed **once** when first seen on this connection. Subsequent requests with the same token reuse the cached proof. With N users and M requests per user, the total signing cost is N (one per token) rather than N×M (one per request as with DPoP).
 
+Note: Industry measurements indicate that AI-driven bot and agent traffic is growing rapidly and may exceed human-initiated web traffic within the next few years. In such environments, the per-request signing cost of mechanisms like DPoP becomes a significant scaling bottleneck. The per-connection amortization provided by this specification is designed to remain efficient at these traffic volumes.
+
 ## Security Benefits
 
 This architecture provides defense-in-depth against agentic AI threat vectors:
