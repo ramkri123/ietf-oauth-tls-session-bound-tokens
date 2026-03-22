@@ -137,7 +137,7 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
      A.2.  Request Flow  . . . . . . . . . . . . . . . . . . . . . .  22
      A.3.  Security Benefits . . . . . . . . . . . . . . . . . . . .  24
      A.4.  Relationship to Existing Infrastructure . . . . . . . . .  24
-     A.5.  Implementation Considerations . . . . . . . . . . . . . .  24
+     A.5.  Implementation Considerations . . . . . . . . . . . . . .  25
    Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  25
 
 1.  Introduction
@@ -1162,12 +1162,12 @@ A.1.  Architecture
 
    The following diagram shows the deployment layout.  The AI agent and
    security sidecar run in the same pod or VM.  The sidecar holds the
-   mTLS private key and manages all authenticated outbound connections.
-
-
-
-
-
+   mTLS private key, manages all authenticated outbound connections, and
+   maintains a cache of signed proofs.  A single mTLS connection to a
+   remote resource server may carry requests on behalf of many different
+   users, each with a distinct access token; the sidecar constructs and
+   signs a proof once per (token, connection) pair and reuses it for
+   subsequent requests with the same token.
 
 
 
@@ -1188,9 +1188,10 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
     |  |                  |     |                    |    |
     |  |  Holds:          |     |  Holds:            |    |
     |  |  - access tokens |     |  - mTLS private key|    |
-    |  |  - prompts       |     |  - X.509 cert      |    |
-    |  |  - app context   |     |  - EKM cache       |    |
-    |  |                  |     |                    |    |
+    |  |    (per user)    |     |  - X.509 cert      |    |
+    |  |  - prompts       |     |  - EKM cache       |    |
+    |  |  - app context   |     |  - proof cache     |    |
+    |  |                  |     |    (per token)      |    |
     |  |  Does NOT hold:  |     |  Constructs:       |    |
     |  |  - private keys  |     |  - Binding Proof   |    |
     |  +--------+---------+     +--------+----------+    |
@@ -1225,7 +1226,6 @@ A.2.  Request Flow
        |  Authorization:       |                         |
        |    Bearer <token>     |                         |
        |  (plaintext, local)   |                         |
-       +---------------------->|                         |
 
 
 
@@ -1234,6 +1234,7 @@ Krishnan, et al.        Expires 21 September 2026              [Page 22]
 Internet-Draft          TLS-Session-Bound-Tokens              March 2026
 
 
+       +---------------------->|                         |
        |                       |                         |
        |              (2) Sidecar (ONCE PER TOKEN, CONN):|
        |              - Computes ath = SHA256(token)      |
@@ -1281,7 +1282,6 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
        |                       |<------------------------+
        |  (12) 200 OK          |                         |
        |<----------------------+                         |
-       |                       |                         |
 
 
 
@@ -1289,6 +1289,8 @@ Krishnan, et al.        Expires 21 September 2026              [Page 23]
 
 Internet-Draft          TLS-Session-Bound-Tokens              March 2026
 
+
+       |                       |                         |
 
 A.3.  Security Benefits
 
@@ -1330,14 +1332,12 @@ A.4.  Relationship to Existing Infrastructure
    execution environment while simultaneously binding all tokens to the
    active TLS connection.
 
-A.5.  Implementation Considerations
 
-   This mechanism requires the sidecar to access the TLS Exporter value
-   from the mTLS connection it terminates.  Most TLS libraries (OpenSSL,
-   BoringSSL, Go crypto/tls) provide an API for deriving exporter values
-   (e.g., SSL_export_keying_material()).  However, some proxy frameworks
-   may not yet surface this value to their HTTP filter or extension
-   APIs.  Implementors should verify that their sidecar's TLS
+
+
+
+
+
 
 
 
@@ -1346,6 +1346,14 @@ Krishnan, et al.        Expires 21 September 2026              [Page 24]
 Internet-Draft          TLS-Session-Bound-Tokens              March 2026
 
 
+A.5.  Implementation Considerations
+
+   This mechanism requires the sidecar to access the TLS Exporter value
+   from the mTLS connection it terminates.  Most TLS libraries (OpenSSL,
+   BoringSSL, Go crypto/tls) provide an API for deriving exporter values
+   (e.g., SSL_export_keying_material()).  However, some proxy frameworks
+   may not yet surface this value to their HTTP filter or extension
+   APIs.  Implementors should verify that their sidecar's TLS
    integration exposes the exporter derivation function to the layer
    responsible for constructing the Session-Binding Proof.
 
@@ -1369,14 +1377,6 @@ Authors' Addresses
    Srinivasa Addepalli
    Aryaka
    Email: srinivasa.addepalli@aryaka.com
-
-
-
-
-
-
-
-
 
 
 

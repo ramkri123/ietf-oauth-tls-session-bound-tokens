@@ -2434,7 +2434,7 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <code>htm</code
         <h3 id="name-architecture">
 <a href="#appendix-A.1" class="section-number selfRef">A.1. </a><a href="#name-architecture" class="section-name selfRef">Architecture</a>
         </h3>
-<p id="appendix-A.1-1">The following diagram shows the deployment layout. The AI agent and security sidecar run in the same pod or VM. The sidecar holds the mTLS private key and manages all authenticated outbound connections.<a href="#appendix-A.1-1" class="pilcrow">¶</a></p>
+<p id="appendix-A.1-1">The following diagram shows the deployment layout. The AI agent and security sidecar run in the same pod or VM. The sidecar holds the mTLS private key, manages all authenticated outbound connections, and maintains a cache of signed proofs. A single mTLS connection to a remote resource server may carry requests on behalf of many different users, each with a distinct access token; the sidecar constructs and signs a proof once per (token, connection) pair and reuses it for subsequent requests with the same token.<a href="#appendix-A.1-1" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="appendix-A.1-2">
 <pre> +----------------------------------------------------+
  |  Pod / VM                                          |
@@ -2446,9 +2446,10 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <code>htm</code
  |  |                  |     |                    |    |
  |  |  Holds:          |     |  Holds:            |    |
  |  |  - access tokens |     |  - mTLS private key|    |
- |  |  - prompts       |     |  - X.509 cert      |    |
- |  |  - app context   |     |  - EKM cache       |    |
- |  |                  |     |                    |    |
+ |  |    (per user)    |     |  - X.509 cert      |    |
+ |  |  - prompts       |     |  - EKM cache       |    |
+ |  |  - app context   |     |  - proof cache     |    |
+ |  |                  |     |    (per token)      |    |
  |  |  Does NOT hold:  |     |  Constructs:       |    |
  |  |  - private keys  |     |  - Binding Proof   |    |
  |  +--------+---------+     +--------+----------+    |

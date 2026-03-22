@@ -525,7 +525,7 @@ In agentic AI architectures, a common deployment pattern places a security sidec
 
 ## Architecture
 
-The following diagram shows the deployment layout. The AI agent and security sidecar run in the same pod or VM. The sidecar holds the mTLS private key and manages all authenticated outbound connections.
+The following diagram shows the deployment layout. The AI agent and security sidecar run in the same pod or VM. The sidecar holds the mTLS private key, manages all authenticated outbound connections, and maintains a cache of signed proofs. A single mTLS connection to a remote resource server may carry requests on behalf of many different users, each with a distinct access token; the sidecar constructs and signs a proof once per (token, connection) pair and reuses it for subsequent requests with the same token.
 
 ~~~
  +----------------------------------------------------+
@@ -538,9 +538,10 @@ The following diagram shows the deployment layout. The AI agent and security sid
  |  |                  |     |                    |    |
  |  |  Holds:          |     |  Holds:            |    |
  |  |  - access tokens |     |  - mTLS private key|    |
- |  |  - prompts       |     |  - X.509 cert      |    |
- |  |  - app context   |     |  - EKM cache       |    |
- |  |                  |     |                    |    |
+ |  |    (per user)    |     |  - X.509 cert      |    |
+ |  |  - prompts       |     |  - EKM cache       |    |
+ |  |  - app context   |     |  - proof cache     |    |
+ |  |                  |     |    (per token)      |    |
  |  |  Does NOT hold:  |     |  Constructs:       |    |
  |  |  - private keys  |     |  - Binding Proof   |    |
  |  +--------+---------+     +--------+----------+    |
