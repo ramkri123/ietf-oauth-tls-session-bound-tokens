@@ -1514,6 +1514,9 @@ li > p:last-of-type:only-child {
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9.2.4">
                 <p id="section-toc.1-1.9.2.4.1"><a href="#appendix-A.4" class="auto internal xref">A.4</a>.  <a href="#name-relationship-to-existing-in" class="internal xref">Relationship to Existing Infrastructure</a></p>
 </li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9.2.5">
+                <p id="section-toc.1-1.9.2.5.1"><a href="#appendix-A.5" class="auto internal xref">A.5</a>.  <a href="#name-implementation-consideratio" class="internal xref">Implementation Considerations</a></p>
+</li>
             </ul>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10">
@@ -2567,6 +2570,14 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <code>htm</code
 <a href="#appendix-A.4" class="section-number selfRef">A.4. </a><a href="#name-relationship-to-existing-in" class="section-name selfRef">Relationship to Existing Infrastructure</a>
         </h3>
 <p id="appendix-A.4-1">This deployment model aligns with the service mesh architecture used in SPIFFE/SPIRE environments, where the sidecar already manages workload identity certificates. When combined with Transitive Attestation <span>[<a href="#I-D.draft-mw-wimse-transitive-attestation" class="cite xref">I-D.draft-mw-wimse-transitive-attestation</a>]</span>, the sidecar can additionally attest that the agent is running in a verified execution environment while simultaneously binding all tokens to the active TLS connection.<a href="#appendix-A.4-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="implementation-considerations">
+<section id="appendix-A.5">
+        <h3 id="name-implementation-consideratio">
+<a href="#appendix-A.5" class="section-number selfRef">A.5. </a><a href="#name-implementation-consideratio" class="section-name selfRef">Implementation Considerations</a>
+        </h3>
+<p id="appendix-A.5-1">This mechanism requires the sidecar to access the TLS Exporter value from the mTLS connection it terminates. Most TLS libraries (OpenSSL, BoringSSL, Go <code>crypto/tls</code>) provide an API for deriving exporter values (e.g., <code>SSL_export_keying_material()</code>). However, some proxy frameworks may not yet surface this value to their HTTP filter or extension APIs. Implementors should verify that their sidecar's TLS integration exposes the exporter derivation function to the layer responsible for constructing the Session-Binding Proof.<a href="#appendix-A.5-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>

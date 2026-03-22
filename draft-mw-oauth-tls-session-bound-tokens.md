@@ -643,6 +643,10 @@ This architecture provides defense-in-depth against agentic AI threat vectors:
 
 This deployment model aligns with the service mesh architecture used in SPIFFE/SPIRE environments, where the sidecar already manages workload identity certificates. When combined with Transitive Attestation [@I-D.draft-mw-wimse-transitive-attestation], the sidecar can additionally attest that the agent is running in a verified execution environment while simultaneously binding all tokens to the active TLS connection.
 
+## Implementation Considerations
+
+This mechanism requires the sidecar to access the TLS Exporter value from the mTLS connection it terminates. Most TLS libraries (OpenSSL, BoringSSL, Go `crypto/tls`) provide an API for deriving exporter values (e.g., `SSL_export_keying_material()`). However, some proxy frameworks may not yet surface this value to their HTTP filter or extension APIs. Implementors should verify that their sidecar's TLS integration exposes the exporter derivation function to the layer responsible for constructing the Session-Binding Proof.
+
 
 <reference anchor="RFC2119" target="https://www.rfc-editor.org/rfc/rfc2119">
   <front>
