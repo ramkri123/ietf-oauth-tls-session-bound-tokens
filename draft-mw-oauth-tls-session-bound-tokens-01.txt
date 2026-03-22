@@ -137,7 +137,7 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
      A.2.  Request Flow  . . . . . . . . . . . . . . . . . . . . . .  22
      A.3.  Security Benefits . . . . . . . . . . . . . . . . . . . .  24
      A.4.  Relationship to Existing Infrastructure . . . . . . . . .  24
-     A.5.  Implementation Considerations . . . . . . . . . . . . . .  25
+     A.5.  Implementation Considerations . . . . . . . . . . . . . .  24
    Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  25
 
 1.  Introduction
@@ -313,11 +313,30 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
    not change the exporter master secret, avoiding unnecessary re-proof
    cycles while maintaining strong connection binding.
 
+   Note: This mechanism requires both the client and resource server to
+   access the TLS Exporter derivation function from their TLS library.
+   Most TLS libraries (OpenSSL, BoringSSL, Go crypto/tls) provide this
+   API (e.g., SSL_export_keying_material()).  However, some application
+   frameworks and proxy platforms may not yet surface this function to
+   their HTTP or extension layer.  Implementors should verify that their
+   TLS integration exposes exporter derivation to the layer responsible
+   for constructing or verifying the Session-Binding Proof.
+
 2.3.  Session-Binding Proof Format
 
    The Session-Binding Proof is a JWT with the following structure:
 
 2.3.1.  Header
+
+
+
+
+
+
+Krishnan, et al.        Expires 21 September 2026               [Page 6]
+
+Internet-Draft          TLS-Session-Bound-Tokens              March 2026
+
 
    {
      "typ": "tls-binding-proof+jwt",
@@ -329,14 +348,6 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
    certificate.  The x5t#S256 value MUST be the base64url-encoded
    SHA-256 thumbprint of the DER-encoded client certificate, as defined
    in [RFC8705].
-
-
-
-
-Krishnan, et al.        Expires 21 September 2026               [Page 6]
-
-Internet-Draft          TLS-Session-Bound-Tokens              March 2026
-
 
 2.3.2.  Payload
 
@@ -374,6 +385,15 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
    token.
 
    jti:  OPTIONAL.  A unique identifier for the proof.  When present,
+
+
+
+
+Krishnan, et al.        Expires 21 September 2026               [Page 7]
+
+Internet-Draft          TLS-Session-Bound-Tokens              March 2026
+
+
       the resource server MUST verify that this value has not been seen
       before within the token's validity period.
    htm:  OPTIONAL.  The HTTP method of the request to which the proof is
@@ -383,16 +403,6 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
       proof is attached, without query and fragment parts.  When
       present, the resource server MUST verify that it matches the
       actual request URI.
-
-
-
-
-
-
-Krishnan, et al.        Expires 21 September 2026               [Page 7]
-
-Internet-Draft          TLS-Session-Bound-Tokens              March 2026
-
 
 2.3.3.  Signature
 
@@ -431,6 +441,15 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
    The mechanism for requesting and issuing TLS-session-bound tokens is
    as follows:
 
+
+
+
+
+Krishnan, et al.        Expires 21 September 2026               [Page 8]
+
+Internet-Draft          TLS-Session-Bound-Tokens              March 2026
+
+
    1.  The client authenticates to the authorization server using mTLS
        and requests a token.  This MAY be a token exchange per
        [RFC8693], a client credentials grant, or any other OAuth 2.0
@@ -440,15 +459,6 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
        for this client, it includes the cnf claim with tls_exp set to
        the exporter label in the issued token.
    4.  The client receives the token and notes the tls_exp requirement.
-
-
-
-
-
-Krishnan, et al.        Expires 21 September 2026               [Page 8]
-
-Internet-Draft          TLS-Session-Bound-Tokens              March 2026
-
 
 3.2.  Authorization Server Behavior
 
@@ -476,16 +486,6 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
 3.3.  Resource Access with Session-Binding Proof
 
    The following diagram illustrates the complete flow:
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1332,12 +1332,12 @@ A.4.  Relationship to Existing Infrastructure
    execution environment while simultaneously binding all tokens to the
    active TLS connection.
 
+A.5.  Implementation Considerations
 
-
-
-
-
-
+   The sidecar must access the TLS Exporter value from the mTLS
+   connection it terminates in order to construct the Session-Binding
+   Proof.  See Section 2.2 for the general implementation note on TLS
+   Exporter API availability across TLS libraries and frameworks.
 
 
 
@@ -1345,17 +1345,6 @@ Krishnan, et al.        Expires 21 September 2026              [Page 24]
 
 Internet-Draft          TLS-Session-Bound-Tokens              March 2026
 
-
-A.5.  Implementation Considerations
-
-   This mechanism requires the sidecar to access the TLS Exporter value
-   from the mTLS connection it terminates.  Most TLS libraries (OpenSSL,
-   BoringSSL, Go crypto/tls) provide an API for deriving exporter values
-   (e.g., SSL_export_keying_material()).  However, some proxy frameworks
-   may not yet surface this value to their HTTP filter or extension
-   APIs.  Implementors should verify that their sidecar's TLS
-   integration exposes the exporter derivation function to the layer
-   responsible for constructing the Session-Binding Proof.
 
 Authors' Addresses
 
@@ -1377,6 +1366,17 @@ Authors' Addresses
    Srinivasa Addepalli
    Aryaka
    Email: srinivasa.addepalli@aryaka.com
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -1647,6 +1647,7 @@ li > p:last-of-type:only-child {
         </ul>
 <p id="section-2.2-3">For TLS 1.3, the exporter is derived as specified in Section 7.5 of <span>[<a href="#RFC8446" class="cite xref">RFC8446</a>]</span>. For TLS 1.2, the exporter is derived as specified in <span>[<a href="#RFC5705" class="cite xref">RFC5705</a>]</span>. TLS 1.3 is RECOMMENDED because TLS 1.2 abbreviated handshakes (session resumption) may reuse the same master secret across connections, weakening the binding.<a href="#section-2.2-3" class="pilcrow">¶</a></p>
 <p id="section-2.2-4">Note: By binding to the TLS Exporter rather than the application traffic keys, the binding remains valid across TLS 1.3 <code>KeyUpdate</code> operations. Standard key rotation refreshes traffic keys but does not change the exporter master secret, avoiding unnecessary re-proof cycles while maintaining strong connection binding.<a href="#section-2.2-4" class="pilcrow">¶</a></p>
+<p id="section-2.2-5">Note: This mechanism requires both the client and resource server to access the TLS Exporter derivation function from their TLS library. Most TLS libraries (OpenSSL, BoringSSL, Go <code>crypto/tls</code>) provide this API (e.g., <code>SSL_export_keying_material()</code>). However, some application frameworks and proxy platforms may not yet surface this function to their HTTP or extension layer. Implementors should verify that their TLS integration exposes exporter derivation to the layer responsible for constructing or verifying the Session-Binding Proof.<a href="#section-2.2-5" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="session-binding-proof-format">
@@ -2578,7 +2579,7 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <code>htm</code
         <h3 id="name-implementation-consideratio">
 <a href="#appendix-A.5" class="section-number selfRef">A.5. </a><a href="#name-implementation-consideratio" class="section-name selfRef">Implementation Considerations</a>
         </h3>
-<p id="appendix-A.5-1">This mechanism requires the sidecar to access the TLS Exporter value from the mTLS connection it terminates. Most TLS libraries (OpenSSL, BoringSSL, Go <code>crypto/tls</code>) provide an API for deriving exporter values (e.g., <code>SSL_export_keying_material()</code>). However, some proxy frameworks may not yet surface this value to their HTTP filter or extension APIs. Implementors should verify that their sidecar's TLS integration exposes the exporter derivation function to the layer responsible for constructing the Session-Binding Proof.<a href="#appendix-A.5-1" class="pilcrow">¶</a></p>
+<p id="appendix-A.5-1">The sidecar must access the TLS Exporter value from the mTLS connection it terminates in order to construct the Session-Binding Proof. See <a href="#tls-exporter-derivation" class="auto internal xref">Section 2.2</a> for the general implementation note on TLS Exporter API availability across TLS libraries and frameworks.<a href="#appendix-A.5-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>

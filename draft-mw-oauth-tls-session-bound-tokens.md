@@ -123,6 +123,8 @@ For TLS 1.3, the exporter is derived as specified in Section 7.5 of [@!RFC8446].
 
 Note: By binding to the TLS Exporter rather than the application traffic keys, the binding remains valid across TLS 1.3 `KeyUpdate` operations. Standard key rotation refreshes traffic keys but does not change the exporter master secret, avoiding unnecessary re-proof cycles while maintaining strong connection binding.
 
+Note: This mechanism requires both the client and resource server to access the TLS Exporter derivation function from their TLS library. Most TLS libraries (OpenSSL, BoringSSL, Go `crypto/tls`) provide this API (e.g., `SSL_export_keying_material()`). However, some application frameworks and proxy platforms may not yet surface this function to their HTTP or extension layer. Implementors should verify that their TLS integration exposes exporter derivation to the layer responsible for constructing or verifying the Session-Binding Proof.
+
 ## Session-Binding Proof Format
 
 The Session-Binding Proof is a JWT with the following structure:
@@ -646,7 +648,7 @@ This deployment model aligns with the service mesh architecture used in SPIFFE/S
 
 ## Implementation Considerations
 
-This mechanism requires the sidecar to access the TLS Exporter value from the mTLS connection it terminates. Most TLS libraries (OpenSSL, BoringSSL, Go `crypto/tls`) provide an API for deriving exporter values (e.g., `SSL_export_keying_material()`). However, some proxy frameworks may not yet surface this value to their HTTP filter or extension APIs. Implementors should verify that their sidecar's TLS integration exposes the exporter derivation function to the layer responsible for constructing the Session-Binding Proof.
+The sidecar must access the TLS Exporter value from the mTLS connection it terminates in order to construct the Session-Binding Proof. See (#tls-exporter-derivation) for the general implementation note on TLS Exporter API availability across TLS libraries and frameworks.
 
 
 <reference anchor="RFC2119" target="https://www.rfc-editor.org/rfc/rfc2119">
