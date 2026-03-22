@@ -51,7 +51,7 @@ organization = "Aryaka"
 
 .# Abstract
 
-This document defines a mechanism for binding OAuth 2.0 access tokens to a specific mutual TLS (mTLS) session. The binding is achieved through a proof token that incorporates the TLS Exporter value [@!RFC5705] derived from the current connection and an access token hash, signed by the client's private key corresponding to its mTLS certificate. This mechanism prevents stolen bearer tokens from being replayed on a different TLS connection. The proof is constructed once per (token, connection) pair and reused across all requests on that connection, delivering session binding with no per-request signing overhead and no additional key management beyond what mTLS already provides. While applicable to any OAuth 2.0 access token presented over mTLS, this specification is primarily motivated by the Token Exchange protocol [@!RFC8693], where multi-hop delegation chains in autonomous, agent-driven architectures create elevated replay risk.
+This document defines a mechanism for binding OAuth 2.0 access tokens to a specific mutual TLS (mTLS) connection. The binding is achieved through a proof token that incorporates the TLS Exporter value [@!RFC5705] derived from the current connection and an access token hash, signed by the client's private key corresponding to its mTLS certificate. This mechanism prevents stolen bearer tokens from being replayed on a different TLS connection. The proof is constructed once per (token, connection) pair and reused across all requests on that connection, delivering session binding with no per-request signing overhead and no additional key management beyond what mTLS already provides. The mechanism is applicable to TLS 1.2, TLS 1.3, and QUIC transports. While applicable to any OAuth 2.0 access token presented over mTLS, this specification is primarily motivated by the Token Exchange protocol [@!RFC8693], where multi-hop delegation chains in autonomous, agent-driven architectures create elevated replay risk.
 
 {mainmatter}
 
@@ -69,7 +69,7 @@ Existing mitigations address parts of this problem:
 *   **RFC 9449 (DPoP)** [@!RFC9449]: Provides application-layer proof-of-possession using ephemeral, application-managed keys. Applicable to both public and confidential clients, but binds to the key, not to the TLS channel, and requires generating and managing a separate key pair.
 *   **Token Binding (RFC 8471-8473)**: Proposed direct TLS session binding but required a new TLS extension, was never specified for Token Exchange, encountered adoption barriers in browsers and TLS 1.3 transitions, and was ultimately abandoned.
 
-None of these mechanisms provide **TLS-connection-level binding** for OAuth 2.0 access tokens in mTLS environments. This specification fills that gap by reusing the existing mTLS key pair (no additional key generation) and amortizing the proof to once per (token, connection) pair rather than once per request — delivering stronger binding than DPoP at lower per-request cost.
+None of these mechanisms provide **TLS-connection-level binding** for OAuth 2.0 access tokens in mTLS environments. This specification fills that gap by reusing the existing mTLS key pair (no additional key generation) and amortizing the proof to once per (token, connection) pair rather than once per request — delivering stronger binding than DPoP at lower per-request cost. The binding mechanism relies on TLS Exporter values, which are available in TLS 1.2, TLS 1.3, and QUIC (via its integrated TLS 1.3 handshake), making the specification transport-agnostic across modern encrypted transports.
 
 ## The Agentic AI Amplifier
 
@@ -411,6 +411,17 @@ The proxy MUST derive the exporter using the label and parameters specified in (
 The backend resource server MUST use the forwarded exporter value (instead of its own locally-derived value) when verifying the Session-Binding Proof.
 
 **Security Warning:** The `TLS-Exporter` header contains security-sensitive material. The connection between the proxy and backend MUST be integrity-protected (e.g., via a separate mTLS connection or a trusted network). The backend MUST NOT accept this header from untrusted sources.
+
+## QUIC and HTTP/3
+
+This specification is directly applicable to QUIC ([@RFC9000]) and HTTP/3 transports. QUIC integrates TLS 1.3 into its handshake ([@RFC9001]), and TLS Exporter values are available for use with QUIC connections as specified in Section 4.2 of [@RFC9001].
+
+The following considerations apply when using this specification over QUIC:
+
+*   **Exporter derivation**: The TLS Exporter MUST be derived using the 1-RTT exporter keys (post-handshake). Proofs MUST NOT be constructed using 0-RTT exporter values, as these are derived from pre-shared keys and provide weaker binding guarantees.
+*   **Connection migration**: QUIC connections may migrate across network paths (different IP addresses and ports) without a new TLS handshake. The TLS state — and therefore the EKM — persists across migrations. Session-Binding Proofs remain valid after connection migration.
+*   **Client authentication**: In TLS 1.3 over QUIC, post-handshake client authentication is not supported (Section 4.4 of [@RFC9001]). Client certificates MUST be presented during the initial handshake. This simplifies the binding model: the client identity is fixed at connection establishment.
+*   **Long-lived connections**: QUIC connections are designed to be long-lived and resilient to network changes, aligning naturally with the long-lived connection guidance in (#performance-characteristics).
 
 # Security Considerations
 
@@ -793,6 +804,28 @@ When a connection to the upstream resource server is lost and a new one is estab
     <author initials="N." surname="Sakimura" fullname="Nat Sakimura"/>
     <author initials="T." surname="Lodderstedt" fullname="Torsten Lodderstedt"/>
     <date month="February" year="2020"/>
+  </front>
+</reference>
+
+
+
+<reference anchor="RFC9000" target="https://www.rfc-editor.org/rfc/rfc9000">
+  <front>
+    <title>QUIC: A UDP-Based Multiplexed and Secure Transport</title>
+    <author initials="J." surname="Iyengar" fullname="Jana Iyengar"/>
+    <author initials="M." surname="Thomson" fullname="Martin Thomson"/>
+    <date month="May" year="2021"/>
+  </front>
+</reference>
+
+
+
+<reference anchor="RFC9001" target="https://www.rfc-editor.org/rfc/rfc9001">
+  <front>
+    <title>Using TLS to Secure QUIC</title>
+    <author initials="M." surname="Thomson" fullname="Martin Thomson"/>
+    <author initials="S." surname="Turner" fullname="Sean Turner"/>
+    <date month="May" year="2021"/>
   </front>
 </reference>
 
