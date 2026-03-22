@@ -91,7 +91,7 @@ Table of Contents
    3.  Protocol Flow . . . . . . . . . . . . . . . . . . . . . . . .   9
      3.1.  Token Issuance with Session Binding . . . . . . . . . . .   9
      3.2.  Authorization Server Behavior . . . . . . . . . . . . . .   9
-     3.3.  Resource Access with Session-Binding Proof  . . . . . . .   9
+     3.3.  Resource Access with Session-Binding Proof  . . . . . . .  10
        3.3.1.  Performance Characteristics . . . . . . . . . . . . .  11
        3.3.2.  Mid-Session Token Binding . . . . . . . . . . . . . .  11
      3.4.  Token Introspection Considerations  . . . . . . . . . . .  13
@@ -232,9 +232,12 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
       usable from any connection.
 
    These characteristics make bearer token replay a *first-order threat*
-   in agentic AI architectures.  This document addresses this gap by
-   binding access tokens to the mTLS connection on which they are
-   presented.
+   in agentic AI architectures.  As autonomous agents increasingly drive
+   API-to-API traffic volumes that exceed human-initiated requests, per-
+   request cryptographic overhead becomes a significant scaling concern.
+   This document addresses this gap by binding access tokens to the mTLS
+   connection on which they are presented, with proof amortization that
+   scales to high-volume agent traffic.
 
 1.3.  Conventions and Terminology
 
@@ -269,9 +272,6 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
 
    1.  The client and resource server establish an mTLS connection.
        Both sides derive a TLS Exporter value unique to this connection.
-   2.  When presenting an access token on a new connection, the client
-       constructs a *Session-Binding Proof*: a JWT containing the hash
-       of the access token and the TLS Exporter value.
 
 
 
@@ -282,6 +282,9 @@ Krishnan, et al.        Expires 21 September 2026               [Page 5]
 Internet-Draft          TLS-Session-Bound-Tokens              March 2026
 
 
+   2.  When presenting an access token on a new connection, the client
+       constructs a *Session-Binding Proof*: a JWT containing the hash
+       of the access token and the TLS Exporter value.
    3.  The client signs this JWT with the private key corresponding to
        its mTLS client certificate.  The same proof MAY be reused for
        all subsequent requests using that token on the same connection.
@@ -320,14 +323,11 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
    not change the exporter master secret, avoiding unnecessary re-proof
    cycles while maintaining strong connection binding.
 
-   Note: This mechanism requires both the client and resource server to
-   access the TLS Exporter derivation function from their TLS library.
-   Most TLS libraries (OpenSSL, BoringSSL, Go crypto/tls) provide this
-   API (e.g., SSL_export_keying_material()).  However, some application
-   frameworks and proxy platforms may not yet surface this function to
-   their HTTP or extension layer.  Implementors should verify that their
-   TLS integration exposes exporter derivation to the layer responsible
-   for constructing or verifying the Session-Binding Proof.
+
+
+
+
+
 
 
 
@@ -337,6 +337,15 @@ Krishnan, et al.        Expires 21 September 2026               [Page 6]
 
 Internet-Draft          TLS-Session-Bound-Tokens              March 2026
 
+
+   Note: This mechanism requires both the client and resource server to
+   access the TLS Exporter derivation function from their TLS library.
+   Most TLS libraries (OpenSSL, BoringSSL, Go crypto/tls) provide this
+   API (e.g., SSL_export_keying_material()).  However, some application
+   frameworks and proxy platforms may not yet surface this function to
+   their HTTP or extension layer.  Implementors should verify that their
+   TLS integration exposes exporter derivation to the layer responsible
+   for constructing or verifying the Session-Binding Proof.
 
 2.3.  Session-Binding Proof Format
 
@@ -377,15 +386,6 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
    ath:  REQUIRED.  The base64url-encoded SHA-256 hash of the ASCII
       encoding of the associated access token value.
    ekm:  REQUIRED.  The base64url-encoded TLS Exporter value derived as
-      specified in Section 2.2.
-   iat:  REQUIRED.  The time at which the proof was issued, as a
-      NumericDate (seconds since the Unix epoch).  The resource server
-      MUST verify that this value is within an acceptable window.
-
-
-
-
-
 
 
 
@@ -393,6 +393,11 @@ Krishnan, et al.        Expires 21 September 2026               [Page 7]
 
 Internet-Draft          TLS-Session-Bound-Tokens              March 2026
 
+
+      specified in Section 2.2.
+   iat:  REQUIRED.  The time at which the proof was issued, as a
+      NumericDate (seconds since the Unix epoch).  The resource server
+      MUST verify that this value is within an acceptable window.
 
 2.3.2.2.  Per-Request Claims (OPTIONAL)
 
@@ -436,12 +441,7 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
    x5t#S256:  REQUIRED.  The certificate thumbprint as defined in
       [RFC8705].
    tls_exp:  REQUIRED.  A string value containing the TLS Exporter label
-      that the client and resource server MUST use to derive the
-      session-binding value.  The presence of this claim signals that
-      the resource server MUST require and verify a Session-Binding
-      Proof whenever this token is presented.  This follows the pattern
-      of existing cnf members which carry key/binding material rather
-      than boolean flags (see [RFC7800]).
+
 
 
 
@@ -449,6 +449,13 @@ Krishnan, et al.        Expires 21 September 2026               [Page 8]
 
 Internet-Draft          TLS-Session-Bound-Tokens              March 2026
 
+
+      that the client and resource server MUST use to derive the
+      session-binding value.  The presence of this claim signals that
+      the resource server MUST require and verify a Session-Binding
+      Proof whenever this token is presented.  This follows the pattern
+      of existing cnf members which carry key/binding material rather
+      than boolean flags (see [RFC7800]).
 
 3.  Protocol Flow
 
@@ -490,13 +497,6 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
    *  Risk-based policy: When the requested scope, audience, or
       delegation depth exceeds a policy threshold.
 
-3.3.  Resource Access with Session-Binding Proof
-
-   The following diagram illustrates the complete flow:
-
-
-
-
 
 
 
@@ -505,6 +505,10 @@ Krishnan, et al.        Expires 21 September 2026               [Page 9]
 
 Internet-Draft          TLS-Session-Bound-Tokens              March 2026
 
+
+3.3.  Resource Access with Session-Binding Proof
+
+   The following diagram illustrates the complete flow:
 
     Client (with cert C)                          Resource Server
       |                                                    |
@@ -548,10 +552,6 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
       |    - cache hit: binding verified for THIS conn     |
       |                                                    |
       |<-- 200 OK ----------------------------------------|
-
-
-
-
 
 
 

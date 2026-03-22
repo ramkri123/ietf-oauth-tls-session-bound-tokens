@@ -81,7 +81,7 @@ The rise of autonomous AI agents dramatically amplifies the bearer token replay 
 *   **Generate opaque traffic**: Agent-to-agent API calls are fully automated. A replayed token produces legitimate-looking traffic that is extremely difficult to distinguish from genuine requests—there is no human in the loop to detect anomalies.
 *   **Are susceptible to prompt injection**: A compromised or prompt-injected LLM agent can exfiltrate bearer tokens via tool calls, side channels, or log leakage. These tokens are immediately usable from any connection.
 
-These characteristics make bearer token replay a **first-order threat** in agentic AI architectures. This document addresses this gap by binding access tokens to the mTLS connection on which they are presented.
+These characteristics make bearer token replay a **first-order threat** in agentic AI architectures. As autonomous agents increasingly drive API-to-API traffic volumes that exceed human-initiated requests, per-request cryptographic overhead becomes a significant scaling concern. This document addresses this gap by binding access tokens to the mTLS connection on which they are presented, with proof amortization that scales to high-volume agent traffic.
 
 ## Conventions and Terminology
 
