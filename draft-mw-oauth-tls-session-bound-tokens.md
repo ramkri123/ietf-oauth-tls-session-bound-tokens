@@ -628,6 +628,40 @@ The following diagram shows how requests flow from the AI agent through the side
     |                       |                         |
 ~~~
 
+## HTTP/2 Multi-User Multiplexing
+
+In a typical agentic deployment, Agent A serves multiple users concurrently. Each user's request triggers an on-behalf-of (OBO) token exchange, producing a distinct access token. All outbound requests to Agent B share a single HTTP/2 mTLS connection, multiplexed across streams:
+
+~~~
+ Agent A     Sidecar                   Agent B
+    |            |                        |
+    |            |=== mTLS (one conn) ===>|
+    |            |    EKM derived once    |
+    |            |                        |
+ User 1:        |                        |
+    |--Token_1-->|                        |
+    |            |--(stream 1)----------->|
+    |            |  Bearer: Token_1       |
+    |            |  Proof: {ath_1,ekm}    |
+    |            |  (signed once)         |
+    |            |                        |
+ User 2:        |                        |
+    |--Token_2-->|                        |
+    |            |--(stream 3)----------->|
+    |            |  Bearer: Token_2       |
+    |            |  Proof: {ath_2,ekm}    |
+    |            |  (signed once)         |
+    |            |                        |
+ User 1 again:  |                        |
+    |--Token_1-->|                        |
+    |            |--(stream 5)----------->|
+    |            |  Bearer: Token_1       |
+    |            |  Proof: reused         |
+    |            |                        |
+~~~
+
+Each token is signed **once** when first seen on this connection. Subsequent requests with the same token reuse the cached proof. With N users and M requests per user, the total signing cost is N (one per token) rather than N×M (one per request as with DPoP).
+
 ## Security Benefits
 
 This architecture provides defense-in-depth against agentic AI threat vectors:

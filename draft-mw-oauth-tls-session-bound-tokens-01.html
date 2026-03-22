@@ -1509,16 +1509,19 @@ li > p:last-of-type:only-child {
                 <p id="section-toc.1-1.9.2.2.1"><a href="#appendix-A.2" class="auto internal xref">A.2</a>.  <a href="#name-request-flow" class="internal xref">Request Flow</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9.2.3">
-                <p id="section-toc.1-1.9.2.3.1"><a href="#appendix-A.3" class="auto internal xref">A.3</a>.  <a href="#name-security-benefits" class="internal xref">Security Benefits</a></p>
+                <p id="section-toc.1-1.9.2.3.1"><a href="#appendix-A.3" class="auto internal xref">A.3</a>.  <a href="#name-http-2-multi-user-multiplex" class="internal xref">HTTP/2 Multi-User Multiplexing</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9.2.4">
-                <p id="section-toc.1-1.9.2.4.1"><a href="#appendix-A.4" class="auto internal xref">A.4</a>.  <a href="#name-relationship-to-existing-in" class="internal xref">Relationship to Existing Infrastructure</a></p>
+                <p id="section-toc.1-1.9.2.4.1"><a href="#appendix-A.4" class="auto internal xref">A.4</a>.  <a href="#name-security-benefits" class="internal xref">Security Benefits</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9.2.5">
-                <p id="section-toc.1-1.9.2.5.1"><a href="#appendix-A.5" class="auto internal xref">A.5</a>.  <a href="#name-implementation-consideratio" class="internal xref">Implementation Considerations</a></p>
+                <p id="section-toc.1-1.9.2.5.1"><a href="#appendix-A.5" class="auto internal xref">A.5</a>.  <a href="#name-relationship-to-existing-in" class="internal xref">Relationship to Existing Infrastructure</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9.2.6">
+                <p id="section-toc.1-1.9.2.6.1"><a href="#appendix-A.6" class="auto internal xref">A.6</a>.  <a href="#name-implementation-consideratio" class="internal xref">Implementation Considerations</a></p>
 <ul class="compact toc ulBare ulEmpty">
-<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9.2.5.2.1">
-                    <p id="section-toc.1-1.9.2.5.2.1.1"><a href="#appendix-A.5.1" class="auto internal xref">A.5.1</a>.  <a href="#name-connection-lifecycle-manage" class="internal xref">Connection Lifecycle Management</a></p>
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9.2.6.2.1">
+                    <p id="section-toc.1-1.9.2.6.2.1.1"><a href="#appendix-A.6.1" class="auto internal xref">A.6.1</a>.  <a href="#name-connection-lifecycle-manage" class="internal xref">Connection Lifecycle Management</a></p>
 </li>
                 </ul>
 </li>
@@ -2546,61 +2549,98 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <code>htm</code
 </div>
 </section>
 </div>
-<div id="security-benefits">
+<div id="http-2-multi-user-multiplexing">
 <section id="appendix-A.3">
-        <h3 id="name-security-benefits">
-<a href="#appendix-A.3" class="section-number selfRef">A.3. </a><a href="#name-security-benefits" class="section-name selfRef">Security Benefits</a>
+        <h3 id="name-http-2-multi-user-multiplex">
+<a href="#appendix-A.3" class="section-number selfRef">A.3. </a><a href="#name-http-2-multi-user-multiplex" class="section-name selfRef">HTTP/2 Multi-User Multiplexing</a>
         </h3>
-<p id="appendix-A.3-1">This architecture provides defense-in-depth against agentic AI threat vectors:<a href="#appendix-A.3-1" class="pilcrow">¶</a></p>
+<p id="appendix-A.3-1">In a typical agentic deployment, Agent A serves multiple users concurrently. Each user's request triggers an on-behalf-of (OBO) token exchange, producing a distinct access token. All outbound requests to Agent B share a single HTTP/2 mTLS connection, multiplexed across streams:<a href="#appendix-A.3-1" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="appendix-A.3-2">
+<pre> Agent A     Sidecar                   Agent B
+    |            |                        |
+    |            |=== mTLS (one conn) ===&gt;|
+    |            |    EKM derived once    |
+    |            |                        |
+ User 1:        |                        |
+    |--Token_1--&gt;|                        |
+    |            |--(stream 1)-----------&gt;|
+    |            |  Bearer: Token_1       |
+    |            |  Proof: {ath_1,ekm}    |
+    |            |  (signed once)         |
+    |            |                        |
+ User 2:        |                        |
+    |--Token_2--&gt;|                        |
+    |            |--(stream 3)-----------&gt;|
+    |            |  Bearer: Token_2       |
+    |            |  Proof: {ath_2,ekm}    |
+    |            |  (signed once)         |
+    |            |                        |
+ User 1 again:  |                        |
+    |--Token_1--&gt;|                        |
+    |            |--(stream 5)-----------&gt;|
+    |            |  Bearer: Token_1       |
+    |            |  Proof: reused         |
+    |            |                        |
+</pre><a href="#appendix-A.3-2" class="pilcrow">¶</a>
+</div>
+<p id="appendix-A.3-3">Each token is signed <strong>once</strong> when first seen on this connection. Subsequent requests with the same token reuse the cached proof. With N users and M requests per user, the total signing cost is N (one per token) rather than N×M (one per request as with DPoP).<a href="#appendix-A.3-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="security-benefits">
+<section id="appendix-A.4">
+        <h3 id="name-security-benefits">
+<a href="#appendix-A.4" class="section-number selfRef">A.4. </a><a href="#name-security-benefits" class="section-name selfRef">Security Benefits</a>
+        </h3>
+<p id="appendix-A.4-1">This architecture provides defense-in-depth against agentic AI threat vectors:<a href="#appendix-A.4-1" class="pilcrow">¶</a></p>
 <ul class="normal">
-<li class="normal" id="appendix-A.3-2.1">
-            <p id="appendix-A.3-2.1.1"><strong>Prompt injection token exfiltration</strong>: Even if a compromised LLM exfiltrates an access token via tool calls, log leakage, or side channels, the attacker cannot produce a valid Session-Binding Proof. The mTLS private key resides exclusively in the sidecar process, which is not accessible to the agent's application logic or LLM runtime.<a href="#appendix-A.3-2.1.1" class="pilcrow">¶</a></p>
+<li class="normal" id="appendix-A.4-2.1">
+            <p id="appendix-A.4-2.1.1"><strong>Prompt injection token exfiltration</strong>: Even if a compromised LLM exfiltrates an access token via tool calls, log leakage, or side channels, the attacker cannot produce a valid Session-Binding Proof. The mTLS private key resides exclusively in the sidecar process, which is not accessible to the agent's application logic or LLM runtime.<a href="#appendix-A.4-2.1.1" class="pilcrow">¶</a></p>
 </li>
-          <li class="normal" id="appendix-A.3-2.2">
-            <p id="appendix-A.3-2.2.1"><strong>Key isolation</strong>: The agent never has access to the signing key. The sidecar can enforce hardware-backed key storage (TPM, HSM) independently of the agent's runtime environment.<a href="#appendix-A.3-2.2.1" class="pilcrow">¶</a></p>
+          <li class="normal" id="appendix-A.4-2.2">
+            <p id="appendix-A.4-2.2.1"><strong>Key isolation</strong>: The agent never has access to the signing key. The sidecar can enforce hardware-backed key storage (TPM, HSM) independently of the agent's runtime environment.<a href="#appendix-A.4-2.2.1" class="pilcrow">¶</a></p>
 </li>
-          <li class="normal" id="appendix-A.3-2.3">
-            <p id="appendix-A.3-2.3.1"><strong>Transparent integration</strong>: The agent application code requires no modifications beyond standard OAuth token handling. The session binding is entirely transparent—the sidecar intercepts outbound requests and adds the proof.<a href="#appendix-A.3-2.3.1" class="pilcrow">¶</a></p>
+          <li class="normal" id="appendix-A.4-2.3">
+            <p id="appendix-A.4-2.3.1"><strong>Transparent integration</strong>: The agent application code requires no modifications beyond standard OAuth token handling. The session binding is entirely transparent—the sidecar intercepts outbound requests and adds the proof.<a href="#appendix-A.4-2.3.1" class="pilcrow">¶</a></p>
 </li>
-          <li class="normal" id="appendix-A.3-2.4">
-            <p id="appendix-A.3-2.4.1"><strong>Centralized policy enforcement</strong>: The sidecar can apply additional policy checks (token scoping, rate limiting, destination allowlisting) before constructing the proof, providing a security control plane for agent traffic.<a href="#appendix-A.3-2.4.1" class="pilcrow">¶</a></p>
+          <li class="normal" id="appendix-A.4-2.4">
+            <p id="appendix-A.4-2.4.1"><strong>Centralized policy enforcement</strong>: The sidecar can apply additional policy checks (token scoping, rate limiting, destination allowlisting) before constructing the proof, providing a security control plane for agent traffic.<a href="#appendix-A.4-2.4.1" class="pilcrow">¶</a></p>
 </li>
-          <li class="normal" id="appendix-A.3-2.5">
-            <p id="appendix-A.3-2.5.1"><strong>Audit boundary</strong>: All authenticated outbound traffic passes through the sidecar, providing a natural audit point for logging which tokens were used, to which destinations, and when.<a href="#appendix-A.3-2.5.1" class="pilcrow">¶</a></p>
+          <li class="normal" id="appendix-A.4-2.5">
+            <p id="appendix-A.4-2.5.1"><strong>Audit boundary</strong>: All authenticated outbound traffic passes through the sidecar, providing a natural audit point for logging which tokens were used, to which destinations, and when.<a href="#appendix-A.4-2.5.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
 </section>
 </div>
 <div id="relationship-to-existing-infrastructure">
-<section id="appendix-A.4">
+<section id="appendix-A.5">
         <h3 id="name-relationship-to-existing-in">
-<a href="#appendix-A.4" class="section-number selfRef">A.4. </a><a href="#name-relationship-to-existing-in" class="section-name selfRef">Relationship to Existing Infrastructure</a>
+<a href="#appendix-A.5" class="section-number selfRef">A.5. </a><a href="#name-relationship-to-existing-in" class="section-name selfRef">Relationship to Existing Infrastructure</a>
         </h3>
-<p id="appendix-A.4-1">This deployment model aligns with the service mesh architecture used in SPIFFE/SPIRE environments, where the sidecar already manages workload identity certificates. When combined with Transitive Attestation <span>[<a href="#I-D.draft-mw-wimse-transitive-attestation" class="cite xref">I-D.draft-mw-wimse-transitive-attestation</a>]</span>, the sidecar can additionally attest that the agent is running in a verified execution environment while simultaneously binding all tokens to the active TLS connection.<a href="#appendix-A.4-1" class="pilcrow">¶</a></p>
+<p id="appendix-A.5-1">This deployment model aligns with the service mesh architecture used in SPIFFE/SPIRE environments, where the sidecar already manages workload identity certificates. When combined with Transitive Attestation <span>[<a href="#I-D.draft-mw-wimse-transitive-attestation" class="cite xref">I-D.draft-mw-wimse-transitive-attestation</a>]</span>, the sidecar can additionally attest that the agent is running in a verified execution environment while simultaneously binding all tokens to the active TLS connection.<a href="#appendix-A.5-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="implementation-considerations">
-<section id="appendix-A.5">
+<section id="appendix-A.6">
         <h3 id="name-implementation-consideratio">
-<a href="#appendix-A.5" class="section-number selfRef">A.5. </a><a href="#name-implementation-consideratio" class="section-name selfRef">Implementation Considerations</a>
+<a href="#appendix-A.6" class="section-number selfRef">A.6. </a><a href="#name-implementation-consideratio" class="section-name selfRef">Implementation Considerations</a>
         </h3>
-<p id="appendix-A.5-1">The sidecar must access the TLS Exporter value from the mTLS connection it terminates in order to construct the Session-Binding Proof. See <a href="#tls-exporter-derivation" class="auto internal xref">Section 2.2</a> for the general implementation note on TLS Exporter API availability across TLS libraries and frameworks.<a href="#appendix-A.5-1" class="pilcrow">¶</a></p>
+<p id="appendix-A.6-1">The sidecar must access the TLS Exporter value from the mTLS connection it terminates in order to construct the Session-Binding Proof. See <a href="#tls-exporter-derivation" class="auto internal xref">Section 2.2</a> for the general implementation note on TLS Exporter API availability across TLS libraries and frameworks.<a href="#appendix-A.6-1" class="pilcrow">¶</a></p>
 <div id="connection-lifecycle-management">
-<section id="appendix-A.5.1">
+<section id="appendix-A.6.1">
           <h4 id="name-connection-lifecycle-manage">
-<a href="#appendix-A.5.1" class="section-number selfRef">A.5.1. </a><a href="#name-connection-lifecycle-manage" class="section-name selfRef">Connection Lifecycle Management</a>
+<a href="#appendix-A.6.1" class="section-number selfRef">A.6.1. </a><a href="#name-connection-lifecycle-manage" class="section-name selfRef">Connection Lifecycle Management</a>
           </h4>
-<p id="appendix-A.5.1-1">Sidecars that implement this specification should handle TLS connection lifecycle events to manage the EKM and proof caches correctly. A typical implementation uses a layered architecture:<a href="#appendix-A.5.1-1" class="pilcrow">¶</a></p>
+<p id="appendix-A.6.1-1">Sidecars that implement this specification should handle TLS connection lifecycle events to manage the EKM and proof caches correctly. A typical implementation uses a layered architecture:<a href="#appendix-A.6.1-1" class="pilcrow">¶</a></p>
 <ul class="compact">
-<li class="compact" id="appendix-A.5.1-2.1">
-              <strong>Connection-level layer</strong> (e.g., a network filter or transport callback): Derives the EKM when a new mTLS connection is established and stores it in connection-scoped state. Registers a callback for connection close events.<a href="#appendix-A.5.1-2.1" class="pilcrow">¶</a>
+<li class="compact" id="appendix-A.6.1-2.1">
+              <strong>Connection-level layer</strong> (e.g., a network filter or transport callback): Derives the EKM when a new mTLS connection is established and stores it in connection-scoped state. Registers a callback for connection close events.<a href="#appendix-A.6.1-2.1" class="pilcrow">¶</a>
 </li>
-            <li class="compact" id="appendix-A.5.1-2.2">
-              <strong>Request-level layer</strong> (e.g., an HTTP filter): Reads the cached EKM from the connection-scoped state, constructs or retrieves the cached proof for each token, and injects the <code>Session-Binding-Proof</code> header into outbound requests.<a href="#appendix-A.5.1-2.2" class="pilcrow">¶</a>
+            <li class="compact" id="appendix-A.6.1-2.2">
+              <strong>Request-level layer</strong> (e.g., an HTTP filter): Reads the cached EKM from the connection-scoped state, constructs or retrieves the cached proof for each token, and injects the <code>Session-Binding-Proof</code> header into outbound requests.<a href="#appendix-A.6.1-2.2" class="pilcrow">¶</a>
 </li>
           </ul>
-<p id="appendix-A.5.1-3">When a TLS connection terminates, all connection-scoped state — including the EKM and all cached proofs for that connection — SHOULD be purged automatically. Frameworks that support connection-scoped storage (e.g., per-connection filter state) provide this cleanup naturally without requiring explicit invalidation logic.<a href="#appendix-A.5.1-3" class="pilcrow">¶</a></p>
-<p id="appendix-A.5.1-4">When a connection to the upstream resource server is lost and a new one is established, the sidecar derives a fresh EKM from the new handshake and constructs new proofs. Previously cached proofs are invalid because they contain the old connection's EKM.<a href="#appendix-A.5.1-4" class="pilcrow">¶</a></p>
+<p id="appendix-A.6.1-3">When a TLS connection terminates, all connection-scoped state — including the EKM and all cached proofs for that connection — SHOULD be purged automatically. Frameworks that support connection-scoped storage (e.g., per-connection filter state) provide this cleanup naturally without requiring explicit invalidation logic.<a href="#appendix-A.6.1-3" class="pilcrow">¶</a></p>
+<p id="appendix-A.6.1-4">When a connection to the upstream resource server is lost and a new one is established, the sidecar derives a fresh EKM from the new handshake and constructs new proofs. Previously cached proofs are invalid because they contain the old connection's EKM.<a href="#appendix-A.6.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>

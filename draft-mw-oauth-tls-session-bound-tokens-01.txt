@@ -135,11 +135,12 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
    Appendix A.  Sidecar Deployment for Agentic AI  . . . . . . . . .  21
      A.1.  Architecture  . . . . . . . . . . . . . . . . . . . . . .  21
      A.2.  Request Flow  . . . . . . . . . . . . . . . . . . . . . .  22
-     A.3.  Security Benefits . . . . . . . . . . . . . . . . . . . .  24
-     A.4.  Relationship to Existing Infrastructure . . . . . . . . .  24
-     A.5.  Implementation Considerations . . . . . . . . . . . . . .  24
-       A.5.1.  Connection Lifecycle Management . . . . . . . . . . .  25
-   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  25
+     A.3.  HTTP/2 Multi-User Multiplexing  . . . . . . . . . . . . .  24
+     A.4.  Security Benefits . . . . . . . . . . . . . . . . . . . .  24
+     A.5.  Relationship to Existing Infrastructure . . . . . . . . .  25
+     A.6.  Implementation Considerations . . . . . . . . . . . . . .  25
+       A.6.1.  Connection Lifecycle Management . . . . . . . . . . .  25
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  26
 
 1.  Introduction
 
@@ -158,10 +159,9 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
 
    Existing mitigations address parts of this problem:
 
-
-
-
-
+   *  *RFC 8705 (mTLS Certificate-Bound Tokens)* [RFC8705]: Binds the
+      token to the client's X.509 certificate thumbprint.  However, the
+      binding is to the _certificate identity_, not the _TLS
 
 
 
@@ -170,9 +170,6 @@ Krishnan, et al.        Expires 21 September 2026               [Page 3]
 Internet-Draft          TLS-Session-Bound-Tokens              March 2026
 
 
-   *  *RFC 8705 (mTLS Certificate-Bound Tokens)* [RFC8705]: Binds the
-      token to the client's X.509 certificate thumbprint.  However, the
-      binding is to the _certificate identity_, not the _TLS
       connection_. If the same certificate is used across connections,
       or if the certificate and token are both exfiltrated, the token
       remains replayable.
@@ -217,6 +214,9 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
       injected LLM agent can exfiltrate bearer tokens via tool calls,
       side channels, or log leakage.  These tokens are immediately
       usable from any connection.
+
+
+
 
 
 
@@ -1292,10 +1292,59 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
 
        |                       |                         |
 
-A.3.  Security Benefits
+A.3.  HTTP/2 Multi-User Multiplexing
+
+   In a typical agentic deployment, Agent A serves multiple users
+   concurrently.  Each user's request triggers an on-behalf-of (OBO)
+   token exchange, producing a distinct access token.  All outbound
+   requests to Agent B share a single HTTP/2 mTLS connection,
+   multiplexed across streams:
+
+    Agent A     Sidecar                   Agent B
+       |            |                        |
+       |            |=== mTLS (one conn) ===>|
+       |            |    EKM derived once    |
+       |            |                        |
+    User 1:        |                        |
+       |--Token_1-->|                        |
+       |            |--(stream 1)----------->|
+       |            |  Bearer: Token_1       |
+       |            |  Proof: {ath_1,ekm}    |
+       |            |  (signed once)         |
+       |            |                        |
+    User 2:        |                        |
+       |--Token_2-->|                        |
+       |            |--(stream 3)----------->|
+       |            |  Bearer: Token_2       |
+       |            |  Proof: {ath_2,ekm}    |
+       |            |  (signed once)         |
+       |            |                        |
+    User 1 again:  |                        |
+       |--Token_1-->|                        |
+       |            |--(stream 5)----------->|
+       |            |  Bearer: Token_1       |
+       |            |  Proof: reused         |
+       |            |                        |
+
+   Each token is signed *once* when first seen on this connection.
+   Subsequent requests with the same token reuse the cached proof.  With
+   N users and M requests per user, the total signing cost is N (one per
+   token) rather than N×M (one per request as with DPoP).
+
+A.4.  Security Benefits
 
    This architecture provides defense-in-depth against agentic AI threat
    vectors:
+
+
+
+
+
+
+Krishnan, et al.        Expires 21 September 2026              [Page 24]
+
+Internet-Draft          TLS-Session-Bound-Tokens              March 2026
+
 
    *  *Prompt injection token exfiltration*: Even if a compromised LLM
       exfiltrates an access token via tool calls, log leakage, or side
@@ -1322,7 +1371,7 @@ A.3.  Security Benefits
       through the sidecar, providing a natural audit point for logging
       which tokens were used, to which destinations, and when.
 
-A.4.  Relationship to Existing Infrastructure
+A.5.  Relationship to Existing Infrastructure
 
    This deployment model aligns with the service mesh architecture used
    in SPIFFE/SPIRE environments, where the sidecar already manages
@@ -1332,25 +1381,26 @@ A.4.  Relationship to Existing Infrastructure
    execution environment while simultaneously binding all tokens to the
    active TLS connection.
 
-A.5.  Implementation Considerations
+A.6.  Implementation Considerations
 
    The sidecar must access the TLS Exporter value from the mTLS
    connection it terminates in order to construct the Session-Binding
    Proof.  See Section 2.2 for the general implementation note on TLS
    Exporter API availability across TLS libraries and frameworks.
 
-
-
-Krishnan, et al.        Expires 21 September 2026              [Page 24]
-
-Internet-Draft          TLS-Session-Bound-Tokens              March 2026
-
-
-A.5.1.  Connection Lifecycle Management
+A.6.1.  Connection Lifecycle Management
 
    Sidecars that implement this specification should handle TLS
    connection lifecycle events to manage the EKM and proof caches
    correctly.  A typical implementation uses a layered architecture:
+
+
+
+
+Krishnan, et al.        Expires 21 September 2026              [Page 25]
+
+Internet-Draft          TLS-Session-Bound-Tokens              March 2026
+
 
    *  *Connection-level layer* (e.g., a network filter or transport
       callback): Derives the EKM when a new mTLS connection is
@@ -1397,4 +1447,10 @@ Authors' Addresses
 
 
 
-Krishnan, et al.        Expires 21 September 2026              [Page 25]
+
+
+
+
+
+
+Krishnan, et al.        Expires 21 September 2026              [Page 26]
