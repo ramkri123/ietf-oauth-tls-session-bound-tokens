@@ -774,6 +774,17 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <tt>htm</tt> an
 
 <section anchor="implementation-considerations"><name>Implementation Considerations</name>
 <t>The sidecar must access the TLS Exporter value from the mTLS connection it terminates in order to construct the Session-Binding Proof. See <xref target="tls-exporter-derivation"></xref> for the general implementation note on TLS Exporter API availability across TLS libraries and frameworks.</t>
+
+<section anchor="connection-lifecycle-management"><name>Connection Lifecycle Management</name>
+<t>Sidecars that implement this specification should handle TLS connection lifecycle events to manage the EKM and proof caches correctly. A typical implementation uses a layered architecture:</t>
+
+<ul spacing="compact">
+<li><strong>Connection-level layer</strong> (e.g., a network filter or transport callback): Derives the EKM when a new mTLS connection is established and stores it in connection-scoped state. Registers a callback for connection close events.</li>
+<li><strong>Request-level layer</strong> (e.g., an HTTP filter): Reads the cached EKM from the connection-scoped state, constructs or retrieves the cached proof for each token, and injects the <tt>Session-Binding-Proof</tt> header into outbound requests.</li>
+</ul>
+<t>When a TLS connection terminates, all connection-scoped state — including the EKM and all cached proofs for that connection — SHOULD be purged automatically. Frameworks that support connection-scoped storage (e.g., per-connection filter state) provide this cleanup naturally without requiring explicit invalidation logic.</t>
+<t>When a connection to the upstream resource server is lost and a new one is established, the sidecar derives a fresh EKM from the new handshake and constructs new proofs. Previously cached proofs are invalid because they contain the old connection's EKM.</t>
+</section>
 </section>
 </section>
 

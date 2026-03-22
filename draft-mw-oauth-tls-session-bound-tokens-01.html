@@ -1516,6 +1516,11 @@ li > p:last-of-type:only-child {
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9.2.5">
                 <p id="section-toc.1-1.9.2.5.1"><a href="#appendix-A.5" class="auto internal xref">A.5</a>.  <a href="#name-implementation-consideratio" class="internal xref">Implementation Considerations</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9.2.5.2.1">
+                    <p id="section-toc.1-1.9.2.5.2.1.1"><a href="#appendix-A.5.1" class="auto internal xref">A.5.1</a>.  <a href="#name-connection-lifecycle-manage" class="internal xref">Connection Lifecycle Management</a></p>
+</li>
+                </ul>
 </li>
             </ul>
 </li>
@@ -2580,6 +2585,24 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <code>htm</code
 <a href="#appendix-A.5" class="section-number selfRef">A.5. </a><a href="#name-implementation-consideratio" class="section-name selfRef">Implementation Considerations</a>
         </h3>
 <p id="appendix-A.5-1">The sidecar must access the TLS Exporter value from the mTLS connection it terminates in order to construct the Session-Binding Proof. See <a href="#tls-exporter-derivation" class="auto internal xref">Section 2.2</a> for the general implementation note on TLS Exporter API availability across TLS libraries and frameworks.<a href="#appendix-A.5-1" class="pilcrow">¶</a></p>
+<div id="connection-lifecycle-management">
+<section id="appendix-A.5.1">
+          <h4 id="name-connection-lifecycle-manage">
+<a href="#appendix-A.5.1" class="section-number selfRef">A.5.1. </a><a href="#name-connection-lifecycle-manage" class="section-name selfRef">Connection Lifecycle Management</a>
+          </h4>
+<p id="appendix-A.5.1-1">Sidecars that implement this specification should handle TLS connection lifecycle events to manage the EKM and proof caches correctly. A typical implementation uses a layered architecture:<a href="#appendix-A.5.1-1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="appendix-A.5.1-2.1">
+              <strong>Connection-level layer</strong> (e.g., a network filter or transport callback): Derives the EKM when a new mTLS connection is established and stores it in connection-scoped state. Registers a callback for connection close events.<a href="#appendix-A.5.1-2.1" class="pilcrow">¶</a>
+</li>
+            <li class="compact" id="appendix-A.5.1-2.2">
+              <strong>Request-level layer</strong> (e.g., an HTTP filter): Reads the cached EKM from the connection-scoped state, constructs or retrieves the cached proof for each token, and injects the <code>Session-Binding-Proof</code> header into outbound requests.<a href="#appendix-A.5.1-2.2" class="pilcrow">¶</a>
+</li>
+          </ul>
+<p id="appendix-A.5.1-3">When a TLS connection terminates, all connection-scoped state — including the EKM and all cached proofs for that connection — SHOULD be purged automatically. Frameworks that support connection-scoped storage (e.g., per-connection filter state) provide this cleanup naturally without requiring explicit invalidation logic.<a href="#appendix-A.5.1-3" class="pilcrow">¶</a></p>
+<p id="appendix-A.5.1-4">When a connection to the upstream resource server is lost and a new one is established, the sidecar derives a fresh EKM from the new handshake and constructs new proofs. Previously cached proofs are invalid because they contain the old connection's EKM.<a href="#appendix-A.5.1-4" class="pilcrow">¶</a></p>
+</section>
+</div>
 </section>
 </div>
 </section>

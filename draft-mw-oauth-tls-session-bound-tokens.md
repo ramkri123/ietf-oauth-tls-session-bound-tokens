@@ -650,6 +650,17 @@ This deployment model aligns with the service mesh architecture used in SPIFFE/S
 
 The sidecar must access the TLS Exporter value from the mTLS connection it terminates in order to construct the Session-Binding Proof. See (#tls-exporter-derivation) for the general implementation note on TLS Exporter API availability across TLS libraries and frameworks.
 
+### Connection Lifecycle Management
+
+Sidecars that implement this specification should handle TLS connection lifecycle events to manage the EKM and proof caches correctly. A typical implementation uses a layered architecture:
+
+*   **Connection-level layer** (e.g., a network filter or transport callback): Derives the EKM when a new mTLS connection is established and stores it in connection-scoped state. Registers a callback for connection close events.
+*   **Request-level layer** (e.g., an HTTP filter): Reads the cached EKM from the connection-scoped state, constructs or retrieves the cached proof for each token, and injects the `Session-Binding-Proof` header into outbound requests.
+
+When a TLS connection terminates, all connection-scoped state — including the EKM and all cached proofs for that connection — SHOULD be purged automatically. Frameworks that support connection-scoped storage (e.g., per-connection filter state) provide this cleanup naturally without requiring explicit invalidation logic.
+
+When a connection to the upstream resource server is lost and a new one is established, the sidecar derives a fresh EKM from the new handshake and constructs new proofs. Previously cached proofs are invalid because they contain the old connection's EKM.
+
 
 <reference anchor="RFC2119" target="https://www.rfc-editor.org/rfc/rfc2119">
   <front>
