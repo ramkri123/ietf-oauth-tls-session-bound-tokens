@@ -695,7 +695,10 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
        (different connection, different token, or first presentation)
        triggers full verification.  This cache is inherently per-
        connection, so a stolen proof presented on a different connection
-       will always miss and fail full verification.
+       will always miss and fail full verification.  When a TLS
+       connection terminates, the resource server SHOULD purge all cache
+       entries associated with that connection, as the bindings are no
+       longer valid.
 
    6.  If all verifications succeed, the resource server processes the
        request.  If any verification fails, the resource server MUST
@@ -719,9 +722,6 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
      error_description="Session-Binding Proof verification failed:
        exporter mismatch"
 
-   WWW-Authenticate: Bearer error="use_session_binding",
-     error_description="This token requires a Session-Binding Proof"
-
 
 
 
@@ -729,6 +729,9 @@ Krishnan, et al.        Expires 21 September 2026              [Page 13]
 
 Internet-Draft          TLS-Session-Bound-Tokens              March 2026
 
+
+   WWW-Authenticate: Bearer error="use_session_binding",
+     error_description="This token requires a Session-Binding Proof"
 
    The following error code values are defined:
 
@@ -775,9 +778,6 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
       reuses the mTLS key pair already established during the handshake,
       eliminating the entire DPoP key lifecycle.
 
-   *  *Per-request overhead*: DPoP requires constructing and signing a
-      new proof JWT for every HTTP request.  This specification
-      constructs the proof *once per (token, connection)* and reuses it
 
 
 
@@ -786,6 +786,9 @@ Krishnan, et al.        Expires 21 September 2026              [Page 14]
 Internet-Draft          TLS-Session-Bound-Tokens              March 2026
 
 
+   *  *Per-request overhead*: DPoP requires constructing and signing a
+      new proof JWT for every HTTP request.  This specification
+      constructs the proof *once per (token, connection)* and reuses it
       across all requests on that connection (when per-request claims
       are omitted).  This is a fundamental efficiency advantage in high-
       throughput workload-to-workload scenarios.
@@ -831,9 +834,6 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
    specification is applicable to any OAuth 2.0 access token, RFC 8693
    Token Exchange is a primary motivator: each hop in a delegation chain
    produces a new bearer token, and session binding contains the blast
-   radius of any single token compromise to the specific TLS connection
-   on which it is presented.
-
 
 
 
@@ -841,6 +841,9 @@ Krishnan, et al.        Expires 21 September 2026              [Page 15]
 
 Internet-Draft          TLS-Session-Bound-Tokens              March 2026
 
+
+   radius of any single token compromise to the specific TLS connection
+   on which it is presented.
 
 5.  TLS Proxy Considerations
 
@@ -886,9 +889,6 @@ Internet-Draft          TLS-Session-Bound-Tokens              March 2026
    This section addresses security considerations in addition to those
    described in the OAuth 2.0 Security Best Current Practice
    [I-D.ietf-oauth-security-topics].
-
-
-
 
 
 
