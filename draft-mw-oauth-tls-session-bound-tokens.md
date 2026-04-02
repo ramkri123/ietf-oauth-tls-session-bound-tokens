@@ -47,22 +47,6 @@ organization = "Aryaka"
   [author.address]
   email = "srinivasa.addepalli@aryaka.com"
 
-[[contributor]]
-initials = "R."
-surname = "Zabicki"
-fullname = "Roman Zabicki"
-organization = "JPMorgan Chase & Co"
-  [contributor.address]
-  email = "roman.zabicki@chase.com"
-
-[[contributor]]
-initials = "J."
-surname = "McCallie"
-fullname = "Jack McCallie"
-organization = "JPMorgan Chase & Co"
-  [contributor.address]
-  email = "jack.mccallie@chase.com"
-
 %%%
 
 .# Abstract
@@ -547,6 +531,18 @@ This specification registers the following TLS Exporter label in the IANA "TLS E
 *   **Reference**: [this document]
 
 {backmatter}
+
+# Contributors
+
+The following individuals have contributed to this document:
+
+Roman Zabicki  
+JPMorgan Chase & Co  
+Email: roman.zabicki@chase.com
+
+Jack McCallie  
+JPMorgan Chase & Co  
+Email: jack.mccallie@chase.com
 
 # Sidecar Deployment for Agentic AI {#appendix-sidecar}
 

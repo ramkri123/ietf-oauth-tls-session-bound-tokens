@@ -675,6 +675,16 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <tt>htm</tt> an
 </references>
 </references>
 
+<section anchor="contributors"><name>Contributors</name>
+<t>The following individuals have contributed to this document:</t>
+<t>Roman Zabicki<br />
+JPMorgan Chase &amp; Co<br />
+Email: roman.zabicki@chase.com</t>
+<t>Jack McCallie<br />
+JPMorgan Chase &amp; Co<br />
+Email: jack.mccallie@chase.com</t>
+</section>
+
 <section anchor="appendix-sidecar"><name>Sidecar Deployment for Agentic AI</name>
 <t>In agentic AI architectures, a common deployment pattern places a security sidecar (e.g., Envoy, Istio proxy, or a purpose-built agent gateway) alongside each AI agent workload. This appendix describes how TLS-session-bound tokens integrate with this pattern and the resulting security benefits.</t>
 
