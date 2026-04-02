@@ -47,6 +47,22 @@ organization = "Aryaka"
   [author.address]
   email = "srinivasa.addepalli@aryaka.com"
 
+[[contributor]]
+initials = "R."
+surname = "Zabicki"
+fullname = "Roman Zabicki"
+organization = "JPMorgan Chase & Co"
+  [contributor.address]
+  email = "roman.zabicki@chase.com"
+
+[[contributor]]
+initials = "J."
+surname = "McCallie"
+fullname = "Jack McCallie"
+organization = "JPMorgan Chase & Co"
+  [contributor.address]
+  email = "jack.mccallie@chase.com"
+
 %%%
 
 .# Abstract
