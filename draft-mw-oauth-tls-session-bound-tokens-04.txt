@@ -14,7 +14,7 @@ Expires: 4 October 2026                                           Oracle
 
 
              TLS-Session-Bound Access Tokens for OAuth 2.0
-               draft-mw-oauth-tls-session-bound-tokens-02
+               draft-mw-oauth-tls-session-bound-tokens-03
 
 Abstract
 
@@ -135,14 +135,15 @@ Internet-Draft          TLS-Session-Bound-Tokens              April 2026
    8.  References  . . . . . . . . . . . . . . . . . . . . . . . . .  20
      8.1.  Normative References  . . . . . . . . . . . . . . . . . .  20
      8.2.  Informative References  . . . . . . . . . . . . . . . . .  21
-   Appendix A.  Sidecar Deployment for Agentic AI  . . . . . . . . .  22
-     A.1.  Architecture  . . . . . . . . . . . . . . . . . . . . . .  22
-     A.2.  Request Flow  . . . . . . . . . . . . . . . . . . . . . .  23
-     A.3.  HTTP/2 Multi-User Multiplexing  . . . . . . . . . . . . .  25
-     A.4.  Security Benefits . . . . . . . . . . . . . . . . . . . .  26
-     A.5.  Relationship to Existing Infrastructure . . . . . . . . .  26
-     A.6.  Implementation Considerations . . . . . . . . . . . . . .  26
-       A.6.1.  Connection Lifecycle Management . . . . . . . . . . .  27
+   Appendix A.  Contributors . . . . . . . . . . . . . . . . . . . .  22
+   Appendix B.  Sidecar Deployment for Agentic AI  . . . . . . . . .  22
+     B.1.  Architecture  . . . . . . . . . . . . . . . . . . . . . .  22
+     B.2.  Request Flow  . . . . . . . . . . . . . . . . . . . . . .  23
+     B.3.  HTTP/2 Multi-User Multiplexing  . . . . . . . . . . . . .  25
+     B.4.  Security Benefits . . . . . . . . . . . . . . . . . . . .  26
+     B.5.  Relationship to Existing Infrastructure . . . . . . . . .  26
+     B.6.  Implementation Considerations . . . . . . . . . . . . . .  26
+       B.6.1.  Connection Lifecycle Management . . . . . . . . . . .  27
    Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  27
 
 1.  Introduction
@@ -161,7 +162,6 @@ Internet-Draft          TLS-Session-Bound-Tokens              April 2026
    exposes downstream tokens.
 
    Existing mitigations address parts of this problem:
-
 
 
 
@@ -969,7 +969,7 @@ Internet-Draft          TLS-Session-Bound-Tokens              April 2026
       bearer token via tool calls, side channels, or log leakage.
    *  *Mitigation*: The attacker obtains the token but cannot produce a
       valid proof.  The mTLS private key resides in a separate process
-      (e.g., a security sidecar, see Appendix A) or hardware module,
+      (e.g., a security sidecar, see Appendix B) or hardware module,
       inaccessible to the agent's LLM runtime.  Even if the attacker
       also obtains the proof, the EKM will not match on a different
       connection.
@@ -1190,7 +1190,22 @@ Internet-Draft          TLS-Session-Bound-Tokens              April 2026
    [RFC9001]  Thomson, M. and S. Turner, "Using TLS to Secure QUIC", May
               2021, <https://www.rfc-editor.org/rfc/rfc9001>.
 
-Appendix A.  Sidecar Deployment for Agentic AI
+Appendix A.  Contributors
+
+   The following individuals have contributed to this document:
+
+   Roman Zabicki
+   JPMorgan Chase & Co
+   Email: roman.zabicki@chase.com
+
+   Jack McCallie
+   JPMorgan Chase & Co
+   Email: jack.mccallie@chase.com
+
+   Jonian Musa JPMorgan Chase & Co
+   Email: jonian.musa@chase.com
+
+Appendix B.  Sidecar Deployment for Agentic AI
 
    In agentic AI architectures, a common deployment pattern places a
    security sidecar (e.g., Envoy, Istio proxy, or a purpose-built agent
@@ -1198,7 +1213,7 @@ Appendix A.  Sidecar Deployment for Agentic AI
    how TLS-session-bound tokens integrate with this pattern and the
    resulting security benefits.
 
-A.1.  Architecture
+B.1.  Architecture
 
    The following diagram shows the deployment layout.  The AI agent and
    security sidecar run in the same pod or VM.  The sidecar holds the
@@ -1208,21 +1223,6 @@ A.1.  Architecture
    users, each with a distinct access token; the sidecar constructs and
    signs a proof once per (token, connection) pair and reuses it for
    subsequent requests with the same token.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1260,7 +1260,7 @@ Internet-Draft          TLS-Session-Bound-Tokens              April 2026
                                           v
                                  Remote Resource Server
 
-A.2.  Request Flow
+B.2.  Request Flow
 
    The following diagram shows how requests flow from the AI agent
    through the sidecar to the remote resource server.  The sidecar
@@ -1348,7 +1348,7 @@ Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
        |                       |                         |
 
-A.3.  HTTP/2 Multi-User Multiplexing
+B.3.  HTTP/2 Multi-User Multiplexing
 
    In a typical agentic deployment, Agent A serves multiple users
    concurrently.  Each user's request triggers an on-behalf-of (OBO)
@@ -1402,7 +1402,7 @@ Krishnan, et al.         Expires 4 October 2026                [Page 25]
 Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
 
-A.4.  Security Benefits
+B.4.  Security Benefits
 
    This architecture provides defense-in-depth against agentic AI threat
    vectors:
@@ -1432,7 +1432,7 @@ A.4.  Security Benefits
       through the sidecar, providing a natural audit point for logging
       which tokens were used, to which destinations, and when.
 
-A.5.  Relationship to Existing Infrastructure
+B.5.  Relationship to Existing Infrastructure
 
    This deployment model aligns with the service mesh architecture used
    in SPIFFE/SPIRE environments, where the sidecar already manages
@@ -1442,7 +1442,7 @@ A.5.  Relationship to Existing Infrastructure
    execution environment while simultaneously binding all tokens to the
    active TLS connection.
 
-A.6.  Implementation Considerations
+B.6.  Implementation Considerations
 
    The sidecar must access the TLS Exporter value from the mTLS
    connection it terminates in order to construct the Session-Binding
@@ -1458,7 +1458,7 @@ Krishnan, et al.         Expires 4 October 2026                [Page 26]
 Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
 
-A.6.1.  Connection Lifecycle Management
+B.6.1.  Connection Lifecycle Management
 
    Sidecars that implement this specification should handle TLS
    connection lifecycle events to manage the EKM and proof caches

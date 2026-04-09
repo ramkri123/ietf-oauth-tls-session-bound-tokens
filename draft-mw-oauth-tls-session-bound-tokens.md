@@ -544,6 +544,10 @@ Jack McCallie
 JPMorgan Chase & Co  
 Email: jack.mccallie@chase.com
 
+Jonian Musa
+JPMorgan Chase & Co  
+Email: jonian.musa@chase.com
+
 # Sidecar Deployment for Agentic AI {#appendix-sidecar}
 
 In agentic AI architectures, a common deployment pattern places a security sidecar (e.g., Envoy, Istio proxy, or a purpose-built agent gateway) alongside each AI agent workload. This appendix describes how TLS-session-bound tokens integrate with this pattern and the resulting security benefits.
