@@ -5,16 +5,16 @@
 OAuth                                                        R. Krishnan
 Internet-Draft                                       JPMorgan Chase & Co
 Intended status: Standards Track                               A. Prasad
-Expires: 4 October 2026                                           Oracle
+Expires: 11 October 2026                                          Oracle
                                                                 D. Lopez
                                                               Telefonica
                                                             S. Addepalli
                                                                   Aryaka
-                                                            2 April 2026
+                                                            9 April 2026
 
 
              TLS-Session-Bound Access Tokens for OAuth 2.0
-               draft-mw-oauth-tls-session-bound-tokens-03
+               draft-mw-oauth-tls-session-bound-tokens-04
 
 Abstract
 
@@ -53,12 +53,12 @@ Status of This Memo
 
 
 
-Krishnan, et al.         Expires 4 October 2026                 [Page 1]
+Krishnan, et al.         Expires 11 October 2026                [Page 1]
 
 Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
 
-   This Internet-Draft will expire on 4 October 2026.
+   This Internet-Draft will expire on 11 October 2026.
 
 Copyright Notice
 
@@ -109,7 +109,7 @@ Table of Contents
 
 
 
-Krishnan, et al.         Expires 4 October 2026                 [Page 2]
+Krishnan, et al.         Expires 11 October 2026                [Page 2]
 
 Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
@@ -165,7 +165,7 @@ Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
 
 
-Krishnan, et al.         Expires 4 October 2026                 [Page 3]
+Krishnan, et al.         Expires 11 October 2026                [Page 3]
 
 Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
@@ -221,7 +221,7 @@ Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
 
 
-Krishnan, et al.         Expires 4 October 2026                 [Page 4]
+Krishnan, et al.         Expires 11 October 2026                [Page 4]
 
 Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
@@ -277,7 +277,7 @@ Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
 
 
-Krishnan, et al.         Expires 4 October 2026                 [Page 5]
+Krishnan, et al.         Expires 11 October 2026                [Page 5]
 
 Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
@@ -333,7 +333,7 @@ Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
 
 
-Krishnan, et al.         Expires 4 October 2026                 [Page 6]
+Krishnan, et al.         Expires 11 October 2026                [Page 6]
 
 Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
@@ -389,7 +389,7 @@ Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
 
 
-Krishnan, et al.         Expires 4 October 2026                 [Page 7]
+Krishnan, et al.         Expires 11 October 2026                [Page 7]
 
 Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
@@ -445,7 +445,7 @@ Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
 
 
-Krishnan, et al.         Expires 4 October 2026                 [Page 8]
+Krishnan, et al.         Expires 11 October 2026                [Page 8]
 
 Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
@@ -501,7 +501,7 @@ Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
 
 
-Krishnan, et al.         Expires 4 October 2026                 [Page 9]
+Krishnan, et al.         Expires 11 October 2026                [Page 9]
 
 Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
@@ -557,7 +557,7 @@ Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
 
 
-Krishnan, et al.         Expires 4 October 2026                [Page 10]
+Krishnan, et al.         Expires 11 October 2026               [Page 10]
 
 Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
@@ -613,7 +613,7 @@ Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
 
 
-Krishnan, et al.         Expires 4 October 2026                [Page 11]
+Krishnan, et al.         Expires 11 October 2026               [Page 11]
 
 Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
@@ -669,7 +669,7 @@ Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
 
 
-Krishnan, et al.         Expires 4 October 2026                [Page 12]
+Krishnan, et al.         Expires 11 October 2026               [Page 12]
 
 Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
@@ -725,7 +725,7 @@ Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
 
 
-Krishnan, et al.         Expires 4 October 2026                [Page 13]
+Krishnan, et al.         Expires 11 October 2026               [Page 13]
 
 Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
@@ -781,7 +781,7 @@ Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
 
 
-Krishnan, et al.         Expires 4 October 2026                [Page 14]
+Krishnan, et al.         Expires 11 October 2026               [Page 14]
 
 Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
@@ -837,7 +837,7 @@ Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
 
 
-Krishnan, et al.         Expires 4 October 2026                [Page 15]
+Krishnan, et al.         Expires 11 October 2026               [Page 15]
 
 Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
@@ -893,7 +893,7 @@ Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
 
 
-Krishnan, et al.         Expires 4 October 2026                [Page 16]
+Krishnan, et al.         Expires 11 October 2026               [Page 16]
 
 Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
@@ -949,7 +949,7 @@ Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
 
 
-Krishnan, et al.         Expires 4 October 2026                [Page 17]
+Krishnan, et al.         Expires 11 October 2026               [Page 17]
 
 Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
@@ -1005,7 +1005,7 @@ Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
 
 
-Krishnan, et al.         Expires 4 October 2026                [Page 18]
+Krishnan, et al.         Expires 11 October 2026               [Page 18]
 
 Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
@@ -1061,7 +1061,7 @@ Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
 
 
-Krishnan, et al.         Expires 4 October 2026                [Page 19]
+Krishnan, et al.         Expires 11 October 2026               [Page 19]
 
 Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
@@ -1117,7 +1117,7 @@ Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
 
 
-Krishnan, et al.         Expires 4 October 2026                [Page 20]
+Krishnan, et al.         Expires 11 October 2026               [Page 20]
 
 Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
@@ -1173,7 +1173,7 @@ Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
 
 
-Krishnan, et al.         Expires 4 October 2026                [Page 21]
+Krishnan, et al.         Expires 11 October 2026               [Page 21]
 
 Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
@@ -1229,7 +1229,7 @@ B.1.  Architecture
 
 
 
-Krishnan, et al.         Expires 4 October 2026                [Page 22]
+Krishnan, et al.         Expires 11 October 2026               [Page 22]
 
 Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
@@ -1285,7 +1285,7 @@ B.2.  Request Flow
 
 
 
-Krishnan, et al.         Expires 4 October 2026                [Page 23]
+Krishnan, et al.         Expires 11 October 2026               [Page 23]
 
 Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
@@ -1341,7 +1341,7 @@ Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
 
 
-Krishnan, et al.         Expires 4 October 2026                [Page 24]
+Krishnan, et al.         Expires 11 October 2026               [Page 24]
 
 Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
@@ -1397,7 +1397,7 @@ B.3.  HTTP/2 Multi-User Multiplexing
 
 
 
-Krishnan, et al.         Expires 4 October 2026                [Page 25]
+Krishnan, et al.         Expires 11 October 2026               [Page 25]
 
 Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
@@ -1453,7 +1453,7 @@ B.6.  Implementation Considerations
 
 
 
-Krishnan, et al.         Expires 4 October 2026                [Page 26]
+Krishnan, et al.         Expires 11 October 2026               [Page 26]
 
 Internet-Draft          TLS-Session-Bound-Tokens              April 2026
 
@@ -1509,4 +1509,4 @@ Authors' Addresses
 
 
 
-Krishnan, et al.         Expires 4 October 2026                [Page 27]
+Krishnan, et al.         Expires 11 October 2026               [Page 27]
