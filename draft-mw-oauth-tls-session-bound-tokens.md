@@ -2,16 +2,16 @@
 title = "TLS-Session-Bound Access Tokens for OAuth 2.0"
 abbrev = "TLS-Session-Bound-Tokens"
 category = "std"
-docName = "draft-mw-oauth-tls-session-bound-tokens-04"
+docName = "draft-mw-oauth-tls-session-bound-tokens-05"
 ipr = "trust200902"
 area = "Security"
 workgroup = "OAuth"
 keyword = ["oauth", "token exchange", "tls", "channel binding", "proof of possession", "agentic ai", "bearer token"]
-date = 2026-04-09
+date = 2026-05-06
 
 [seriesInfo]
 name = "Internet-Draft"
-value = "draft-mw-oauth-tls-session-bound-tokens-04"
+value = "draft-mw-oauth-tls-session-bound-tokens-05"
 stream = "IETF"
 status = "standard"
 
@@ -89,8 +89,8 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 This document uses the following terms:
 
-TLS Exporter Value:
-: A value derived from the TLS handshake using the mechanism defined in [@!RFC5705] (for TLS 1.2) or Section 7.5 of [@!RFC8446] (for TLS 1.3). The exporter value is unique to the specific TLS connection and is available to both endpoints.
+TLS Exporter Value (EKM):
+: A value derived from the TLS handshake using the mechanism defined in [@!RFC5705] (for TLS 1.2) or Section 7.5 of [@!RFC8446] (for TLS 1.3). EKM stands for Exported Keying Material. The exporter value is unique to the specific TLS connection and is available to both endpoints. This document uses "EKM" and "TLS Exporter value" interchangeably.
 
 Session-Binding Proof:
 : A signed JWT presented alongside the access token that cryptographically binds the token to the current mTLS connection via the TLS Exporter value.
@@ -105,7 +105,7 @@ Token Exchange:
 This specification defines a proof-of-possession mechanism that binds OAuth 2.0 access tokens to the mTLS connection on which they are presented. While applicable to any OAuth 2.0 access token, it is primarily designed for tokens issued via the Token Exchange protocol [@!RFC8693], where multi-hop delegation creates elevated replay risk. The mechanism operates as follows:
 
 1.  The client and resource server establish an mTLS connection. Both sides derive a TLS Exporter value unique to this connection.
-2.  When presenting an access token on a new connection, the client constructs a **Session-Binding Proof**: a JWT containing the hash of the access token and the TLS Exporter value.
+2.  When first presenting an access token on a given connection, the client constructs a **Session-Binding Proof**: a JWT containing the hash of the access token and the TLS Exporter value.
 3.  The client signs this JWT with the private key corresponding to its mTLS client certificate. The same proof MAY be reused for all subsequent requests using that token on the same connection.
 4.  The resource server verifies the proof by checking the signature against the client certificate's public key, confirming the exporter value matches the current connection, confirming the token hash matches the presented access token, and confirming the issuance time is within an acceptable window. The server MUST perform these checks on every request but MAY use a per-connection cache to reduce subsequent verifications to a cache lookup.
 
@@ -119,7 +119,7 @@ Both the client and resource server MUST derive the TLS Exporter value using the
 *   **Context**: Empty (zero-length)
 *   **Length**: 32 octets
 
-For TLS 1.3, the exporter is derived as specified in Section 7.5 of [@!RFC8446]. For TLS 1.2, the exporter is derived as specified in [@!RFC5705]. TLS 1.3 is RECOMMENDED because TLS 1.2 abbreviated handshakes (session resumption) may reuse the same master secret across connections, weakening the binding.
+For TLS 1.3, the exporter is derived as specified in Section 7.5 of [@!RFC8446]. For TLS 1.2, the exporter is derived as specified in [@!RFC5705].
 
 Note: By binding to the TLS Exporter rather than the application traffic keys, the binding remains valid across TLS 1.3 `KeyUpdate` operations. Standard key rotation refreshes traffic keys but does not change the exporter master secret, avoiding unnecessary re-proof cycles while maintaining strong connection binding.
 
@@ -155,6 +155,8 @@ The payload contains REQUIRED connection-level claims that prove session binding
   "htu": "/api/resource"
 }
 ~~~
+
+Note: The example above shows all defined claims. The `ath`, `ekm`, and `iat` claims are REQUIRED; the `jti`, `htm`, and `htu` claims are OPTIONAL per-request claims included only when intra-session hardening is required.
 
 The payload claims are defined as follows:
 
@@ -363,7 +365,7 @@ This specification extends RFC 8705 by adding session-level binding on top of ce
 
 ## Relationship to RFC 9449 (DPoP)
 
-DPoP and this specification address similar goals (proof-of-possession) but differ in binding targets, key management, and per-request cost:
+DPoP and this specification address similar goals (proof-of-possession) but differ in binding targets, key management, per-request cost, and the provenance of the binding key:
 
 *   **Binding target**: DPoP binds tokens to an ephemeral application-layer key. This specification binds tokens to both the client identity (X.509 certificate) and the specific TLS connection (Exporter value). An attacker who exfiltrates a DPoP-bound token and the associated DPoP key can replay the token from any network location; an attacker who exfiltrates a session-bound token cannot, because reproducing the TLS Exporter value requires being on the same TLS connection.
 
@@ -371,13 +373,24 @@ DPoP and this specification address similar goals (proof-of-possession) but diff
 
 *   **Per-request overhead**: DPoP requires constructing and signing a new proof JWT for every HTTP request. This specification constructs the proof **once per (token, connection)** and reuses it across all requests on that connection (when per-request claims are omitted). This is a fundamental efficiency advantage in high-throughput workload-to-workload scenarios.
 
+*   **Identity provenance**: A DPoP key is self-generated by the client with no provenance beyond the client's own assertion — any process can create one. This specification reuses the mTLS key, which in workload deployments is issued through a verifiable attestation chain. When the mTLS credential is a standards-based workload identity (e.g., a SPIFFE X.509-SVID issued by SPIRE), the key's issuance was conditioned on node attestation followed by workload attestation. The Session-Binding Proof is therefore not merely "possession of a key" but "possession of a key whose issuance was verified against the workload's identity and execution context." See (#appendix-spiffe) for details.
+
 *   **Applicability**: DPoP is particularly valuable for **public clients** that cannot use mTLS. This specification is designed for **confidential clients and workloads** that already use mTLS. The two mechanisms are complementary rather than competing.
 
-In summary, for mTLS-capable environments, this specification provides stronger security (connection-level binding vs. key-level binding), lower per-request cost (amortized proof vs. per-request proof), and simpler implementation (no separate key management).
+In summary, for mTLS-capable environments, this specification provides stronger security (connection-level binding vs. key-level binding), lower per-request cost (amortized proof vs. per-request proof), simpler implementation (no separate key management), and — when backed by a workload identity system — proof whose binding key has verifiable provenance through an attestation chain.
 
 ## Relationship to WIMSE WIT/WPT
 
-The WIMSE Workload Identity Token (WIT) and Workload Proof Token (WPT) defined in [@I-D.ietf-wimse-s2s-protocol] provide a similar proof-of-possession mechanism for workload-to-workload communication. This specification is compatible with WIMSE and can be used in conjunction with WIT/WPT when mTLS-based session binding is required for tokens obtained via RFC 8693 exchange.
+The WIMSE Workload Identity Token (WIT) and Workload Proof Token (WPT) defined in [@I-D.ietf-wimse-s2s-protocol] provide a proof-of-possession mechanism for workload-to-workload communication. This specification is compatible with WIMSE and addresses a complementary problem.
+
+WIT/WPT and this specification operate at different layers and answer different questions:
+
+*   **WIMSE WIT/WPT**: "Is this workload who it claims to be, and does it currently hold the private key corresponding to its identity?" (application-layer identity assertion and per-request proof of possession)
+*   **This specification**: "Is this OAuth access token being presented on the TLS connection that this workload authenticated?" (TLS-channel-level token binding scoped to a specific connection)
+
+Neither mechanism alone provides both properties. In a workload-to-workload flow where both are deployed, WIT/WPT establishes and proves the workload's identity at the application layer while this specification ensures the OAuth authorization token is cryptographically bound to the specific connection that workload established. Together they close the complete chain: from attested workload identity to authorized, connection-scoped API access.
+
+WPT is a per-request application-layer proof; this specification amortizes the proof to once per (token, connection) pair at the TLS-channel layer. The two mechanisms are not competing alternatives — deployments that require both workload identity proof and connection-level token binding SHOULD use both.
 
 ## Relationship to Transitive Attestation
 
@@ -446,7 +459,7 @@ The following table summarizes the threats addressed by this specification, the 
 ### T3: Token Exfiltration via LLM Prompt Injection
 
 *   **Threat**: A compromised or prompt-injected AI agent exfiltrates a bearer token via tool calls, side channels, or log leakage.
-*   **Mitigation**: The attacker obtains the token but cannot produce a valid proof. The mTLS private key resides in a separate process (e.g., a security sidecar, see (#appendix-sidecar)) or hardware module, inaccessible to the agent's LLM runtime. Even if the attacker also obtains the proof, the EKM will not match on a different connection.
+*   **Mitigation**: The attacker obtains the token but cannot produce a valid proof. When deployed with a security sidecar (see (#appendix-sidecar)), the mTLS private key resides in a separate process inaccessible to the agent's LLM runtime. When deployed without a sidecar (direct integration, see (#appendix-spiffe)), the private key resides in the same process as the agent; key isolation in this variant depends on platform-level controls such as hardware-backed key storage. In both cases, even if the attacker also obtains the proof, the EKM will not match on a different connection.
 *   **DPoP equivalent**: No. DPoP keys are application-layer and typically reside in the same process as the agent, making co-exfiltration with the token likely.
 
 ### T4: Token + Proof Exfiltration (Both Stolen)
@@ -475,11 +488,11 @@ Deployments that require intra-connection replay protection SHOULD include per-r
 
 ### Compromised Private Key
 
-If the client's mTLS private key is compromised, the attacker can produce valid proofs. This risk is mitigated by:
+If the client's mTLS private key is compromised, the attacker can produce valid proofs. Mitigations include:
 
-*   Hardware-backed key storage (TPM, HSM, TEE).
-*   Short-lived certificates (e.g., SPIFFE SVIDs with 1-hour expiry).
-*   Transitive Attestation [@I-D.draft-mw-wimse-transitive-attestation] for binding identity to a verified execution context.
+*   **Hardware-backed key storage**: Storing the private key in a TPM, HSM, or TEE prevents software-level exfiltration.
+*   **Short-lived certificates**: Using short-lived credentials (e.g., SPIFFE SVIDs with hourly or shorter expiry) limits the window during which a compromised key can be exploited.
+*   **Transitive Attestation**: [@I-D.draft-mw-wimse-transitive-attestation] binds identity to a verified execution context, providing evidence if the execution environment is tampered with.
 
 ### TLS Proxy Trust
 
@@ -689,8 +702,6 @@ In a typical agentic deployment, Agent A serves multiple users concurrently. Eac
 
 Each token is signed **once** when first seen on this connection. Subsequent requests with the same token reuse the cached proof. With N users and M requests per user, the total signing cost is N (one per token) rather than N×M (one per request as with DPoP).
 
-Note: Industry measurements indicate that AI-driven bot and agent traffic is growing rapidly and may exceed human-initiated web traffic within the next few years. In such environments, the per-request signing cost of mechanisms like DPoP becomes a significant scaling bottleneck. The per-connection amortization provided by this specification is designed to remain efficient at these traffic volumes.
-
 ## Security Benefits
 
 This architecture provides defense-in-depth against agentic AI threat vectors:
@@ -723,6 +734,123 @@ Sidecars that implement this specification should handle TLS connection lifecycl
 When a TLS connection terminates, all connection-scoped state — including the EKM and all cached proofs for that connection — SHOULD be purged automatically. Frameworks that support connection-scoped storage (e.g., per-connection filter state) provide this cleanup naturally without requiring explicit invalidation logic.
 
 When a connection to the upstream resource server is lost and a new one is established, the sidecar derives a fresh EKM from the new handshake and constructs new proofs. Previously cached proofs are invalid because they contain the old connection's EKM.
+
+# SPIFFE/SPIRE Integration {#appendix-spiffe}
+
+This appendix is non-normative. It describes how this specification integrates with SPIFFE/SPIRE workload identity infrastructure and the additional security properties that result when the mTLS certificate is a SPIFFE X.509-SVID.
+
+## Identity-Provenance Property
+
+When the mTLS certificate is an arbitrary X.509 certificate, this specification provides connection-scoped token binding: the token cannot be replayed on a different TLS connection. When the mTLS certificate is a SPIFFE X.509-SVID issued by a SPIRE deployment, the binding acquires a richer semantic property.
+
+A SPIFFE X.509-SVID is issued only after a two-stage attestation process:
+
+1. **Node attestation**: The SPIRE agent running on the node proves to the SPIRE server that the node is what it claims to be (e.g., via cloud provider instance identity documents, TPM attestation, or Kubernetes service account tokens).
+
+2. **Workload attestation**: The SPIRE agent verifies the properties of the workload process requesting the SVID (e.g., binary hash, Unix UID/GID, Kubernetes pod labels, container image digest) against policies registered in the SPIRE server.
+
+The resulting SVID is short-lived (typically between one minute and one hour, depending on deployment policy) and is automatically rotated by the SPIRE agent before expiry.
+
+When a Session-Binding Proof is signed by the private key of a SPIFFE X.509-SVID, the resource server's verification implies the following chain:
+
+*   The access token was presented on a specific TLS connection (EKM binding).
+*   That connection was established by the workload whose private key signed the proof.
+*   That workload was attested by a SPIRE agent as running on an attested node.
+*   The SVID was valid and within its short-lived issuance window at the time of proof construction.
+
+This property — authorization bound to attested workload identity — is not achievable with DPoP, whose key has no provenance beyond self-generation, or with RFC 8705 alone, which binds to a certificate thumbprint but does not constrain how the certificate was issued or how long it has been valid. The combination of this specification with SPIFFE/SPIRE delivers identity-rooted proof of possession: the binding key is not "a key the client generated" but "a key issued to a specific attested workload through a verifiable trust chain."
+
+## Deployment Variants
+
+### Without Sidecar (Direct Integration)
+
+In this variant, the workload process itself obtains the SVID via the SPIFFE Workload API and uses it directly for mTLS connections. The workload also constructs the Session-Binding Proof using the SVID private key.
+
+~~~
+ SPIRE Server
+      |
+      | (node + workload attestation)
+      |
+ SPIRE Agent (node-level)
+      |
+      | Workload API (UDS)
+      |
+ +--------------------------------------------------+
+ |  Pod / VM                                        |
+ |                                                  |
+ |  +--------------------------------------------+  |
+ |  |  Workload (AI Agent / Service)             |  |
+ |  |                                            |  |
+ |  |  Holds (via SPIFFE Workload API):          |  |
+ |  |  - X.509-SVID (cert + private key)         |  |
+ |  |  - SVID bundle (trust roots)               |  |
+ |  |                                            |  |
+ |  |  Performs:                                 |  |
+ |  |  - mTLS connection establishment           |  |
+ |  |  - EKM derivation                          |  |
+ |  |  - Session-Binding Proof construction      |  |
+ |  +--------------------------------------------+  |
+ |                    |  mTLS (SVID-authenticated)   |
+ +--------------------+--------------------------+---+
+                      |
+                      v
+             Remote Resource Server
+~~~
+
+The SPIFFE Workload API (typically a Unix domain socket) delivers the current SVID and its private key to the workload process. The workload uses this SVID as its mTLS client certificate and constructs the Session-Binding Proof by signing with the corresponding private key.
+
+**SVID rotation**: When the SPIRE agent rotates the SVID (before expiry), the workload receives the new SVID via the Workload API. The workload SHOULD establish new mTLS connections using the new SVID. Each new connection produces a new EKM; fresh proofs must be constructed for any tokens presented on those connections. Previously cached proofs, which reference the old connection's EKM, remain valid only on connections established with the old SVID.
+
+**Security note**: In this variant, the SVID private key resides in the same process as the agent's application logic and LLM runtime. The key-isolation benefit described in (#appendix-sidecar) does not apply. A workload compromise may expose both the access token and the private key. This variant is appropriate for environments where process-level compromise is not the primary threat model, or where hardware-backed key storage (e.g., PKCS#11, TPM) is enforced at the platform level independently of the application.
+
+### With Sidecar (Recommended for Agentic AI)
+
+In this variant, the SPIRE agent delivers the SVID exclusively to the sidecar. The workload process never receives the SVID private key. The sidecar holds the key, establishes all outbound mTLS connections, and constructs Session-Binding Proofs transparently. This is the pattern described in (#appendix-sidecar), extended to SPIFFE/SPIRE environments.
+
+~~~
+ SPIRE Server
+      |
+      | (node + workload attestation)
+      |
+ SPIRE Agent (node-level)
+      |
+      | Workload API (UDS) — SVID delivered to sidecar only
+      |
+ +----------------------------------------------------+
+ |  Pod / VM                                          |
+ |                                                    |
+ |  +------------------+     +-------------------+    |
+ |  |   AI Agent       |     |   Security        |    |
+ |  |   (app logic,    |     |   Sidecar          |    |
+ |  |    LLM runtime)  |     |   (Envoy + SDS)    |    |
+ |  |                  |     |                    |    |
+ |  |  Does NOT hold:  |     |  Holds (via SDS):  |    |
+ |  |  - SVID          |     |  - X.509-SVID      |    |
+ |  |  - private key   |     |  - SVID private key|    |
+ |  |                  |     |  - EKM cache       |    |
+ |  |                  |     |  - proof cache     |    |
+ |  +--------+---------+     +--------+----------+    |
+ |           |  plaintext HTTP (loopback/UDS)          |
+ |           +------------>-----------+                |
+ |                                    |  mTLS (SVID)   |
+ +------------------------------------+----------------+
+                                      |
+                                      v
+                             Remote Resource Server
+~~~
+
+Envoy-based sidecars typically receive SVID updates from the SPIRE agent via Secret Discovery Service (SDS). When the SVID rotates, the sidecar receives the new certificate and key via SDS and uses it for all subsequent outbound connections. The sidecar's connection lifecycle management described in (#appendix-sidecar) applies directly: on SVID rotation, a new mTLS connection to the resource server produces a new EKM, and the sidecar constructs fresh proofs for any tokens presented on that connection. Resource servers caching `(connection_id, ath)` bindings are unaffected, as each cache entry is keyed on the connection rather than the certificate.
+
+## Relationship to WIMSE WIT/WPT
+
+SPIFFE X.509-SVIDs and WIMSE Workload Identity Tokens (WITs) serve the same purpose — carrying attested workload identity — through different credential formats. This specification is compatible with both.
+
+When WIMSE WIT/WPT is used alongside this specification in a workload-to-workload flow, the two mechanisms address complementary questions at different layers:
+
+*   **WIMSE WIT/WPT**: "Is this workload who it claims to be, and is this the workload that holds the corresponding private key?" (application-layer identity assertion and per-request proof of possession)
+*   **This specification**: "Is this OAuth access token being presented on the TLS connection that this workload authenticated?" (TLS-channel-level token binding)
+
+Together they close the complete chain: workload identity is asserted and proven at the application layer (WIT/WPT), and the OAuth authorization token is cryptographically bound to the specific connection that workload established (this specification). Neither mechanism alone provides both properties.
 
 
 <reference anchor="RFC2119" target="https://www.rfc-editor.org/rfc/rfc2119">
