@@ -1,6 +1,6 @@
 # Makefile for IETF Draft
 
-DRAFT := draft-mw-oauth-tls-session-bound-tokens-04
+DRAFT := draft-mw-oauth-tls-session-bound-tokens-05
 MMARK := $(HOME)/go/bin/mmark
 XML2RFC := $(HOME)/local/bin/xml2rfc
 
