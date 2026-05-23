@@ -67,7 +67,7 @@ Existing mitigations address parts of this problem:
 
 *   **RFC 8705 (mTLS Certificate-Bound Tokens)** [@!RFC8705]: Binds the token to the client's X.509 certificate thumbprint. However, the binding is to the *certificate identity*, not the *TLS connection*. If the same certificate is used across connections, or if the certificate and token are both exfiltrated, the token remains replayable.
 *   **RFC 9449 (DPoP)** [@!RFC9449]: Provides application-layer proof-of-possession using ephemeral, application-managed keys. Applicable to both public and confidential clients, but binds to the key, not to the TLS channel, and requires generating and managing a separate key pair.
-*   **Token Binding (RFC 8471-8473)**: Proposed direct TLS session binding but required a new TLS extension, was never specified for Token Exchange, encountered adoption barriers in browsers and TLS 1.3 transitions, and was ultimately abandoned.
+*   **Token Binding** [@RFC8471][@RFC8472][@RFC8473]: Proposed direct TLS session binding but required a new TLS extension, was never specified for Token Exchange, encountered adoption barriers in browsers and TLS 1.3 transitions, and was ultimately abandoned.
 
 None of these mechanisms provide **TLS-connection-level binding** for OAuth 2.0 access tokens in mTLS environments. This specification fills that gap by reusing the existing mTLS key pair (no additional key generation) and amortizing the proof to once per (token, connection) pair rather than once per request — delivering stronger binding than DPoP at lower per-request cost. The binding mechanism relies on TLS Exporter values, which are available in TLS 1.2, TLS 1.3, and QUIC (via its integrated TLS 1.3 handshake), making the specification transport-agnostic across modern encrypted transports.
 
@@ -379,6 +379,20 @@ DPoP and this specification address similar goals (proof-of-possession) but diff
 
 In summary, for mTLS-capable environments, this specification provides stronger security (connection-level binding vs. key-level binding), lower per-request cost (amortized proof vs. per-request proof), simpler implementation (no separate key management), and — when backed by a workload identity system — proof whose binding key has verifiable provenance through an attestation chain.
 
+## Relationship to Token Binding (RFC 8471-8473)
+
+Token Binding [@RFC8471][@RFC8472][@RFC8473] proposed direct TLS session binding for OAuth and HTTP but did not gain traction in industry. This specification addresses the same core problem — preventing cross-connection token replay — while avoiding the specific deployment barriers that Token Binding encountered.
+
+*   **No new TLS extension.** Token Binding required a dedicated TLS negotiation extension ([@RFC8472]) that had to be implemented and enabled by browser vendors and TLS stacks. This specification uses the TLS Exporter mechanism ([@!RFC5705], [@!RFC8446] Section 7.5), which is already available in every compliant TLS 1.2, TLS 1.3, and QUIC implementation without any extension or negotiation.
+
+*   **Session-scoped binding, not persistent client keys.** Token Binding associated tokens with long-lived, client-managed signing keys, creating persistent client identifiers across connections. This specification binds tokens to the TLS Exporter value, which is unique to each connection and exists only for the lifetime of that session. No persistent identifier is created beyond the TLS session itself.
+
+*   **Specified for Token Exchange.** Token Binding was not defined for use with RFC 8693 Token Exchange delegation chains. This specification is primarily motivated by exactly that scenario: each hop in a multi-hop agentic delegation chain produces a new bearer token, and session binding contains the blast radius of any single compromise to the specific connection on which that token is presented.
+
+*   **Explicit deployment scope constraint.** Token Binding encountered complexity in proxy and intermediary topologies, leading to additional specifications ([@RFC8473]) to handle referred binding over HTTP. This specification avoids that complexity by explicitly restricting the binding guarantee to deployments where the verifier is a direct endpoint of the client TLS connection — either the resource server itself or a co-located sidecar. Forwarding the EKM through a remote intermediary would change the security property from session binding to proxy-attested binding, which is a categorically weaker guarantee. See (#deployment-scope) for details.
+
+This specification is not applicable to browser-based web clients, as browsers do not currently expose TLS Exporter values to JavaScript. It is targeted at server-to-server, service-mesh, and agentic AI workloads where both endpoints have direct access to the TLS stack.
+
 ## Relationship to WIMSE WIT/WPT
 
 The WIMSE Workload Identity Token (WIT) and Workload Proof Token (WPT) defined in [@I-D.ietf-wimse-s2s-protocol] provide a proof-of-possession mechanism for workload-to-workload communication. This specification is compatible with WIMSE and addresses a complementary problem.
@@ -400,30 +414,24 @@ The Transitive Attestation profile [@I-D.draft-mw-wimse-transitive-attestation] 
 
 This specification does not modify the token exchange protocol itself. The authorization server's token exchange endpoint continues to operate as specified in [@!RFC8693]. The session binding is applied to the *resulting* access token through the `cnf` claim. While this specification is applicable to any OAuth 2.0 access token, RFC 8693 Token Exchange is a primary motivator: each hop in a delegation chain produces a new bearer token, and session binding contains the blast radius of any single token compromise to the specific TLS connection on which it is presented.
 
-# TLS Proxy Considerations
+# Deployment Scope
 
-## Pass-Through mTLS
+## Co-Located TLS Termination (Supported)
 
-In deployments where TLS is terminated at the application server (pass-through mode), this specification works without modification. Both the client and server have direct access to the TLS Exporter value.
+This specification requires that the entity verifying the Session-Binding Proof be an endpoint of the TLS connection on which the token is presented, or a sidecar co-located at the same trust boundary as the resource server that terminates that connection directly. In both cases, the verifier derives the EKM from the TLS session it directly participates in, and no EKM forwarding is required.
 
-## TLS Termination at Proxy
+This covers two deployment models:
 
-When a TLS-terminating proxy (e.g., a load balancer or API gateway) sits between the client and the resource server, the proxy MUST forward the following information to the backend:
+*   **Pass-through mTLS**: TLS is terminated at the application server itself. Both the client and resource server derive the EKM directly from the same connection.
+*   **Co-located sidecar**: TLS is terminated at a sidecar (e.g., Envoy) running in the same pod or VM as the resource server. The sidecar derives the EKM directly and verifies the proof before passing the request to the application. This is the recommended deployment model for agentic AI environments. See (#appendix-sidecar).
 
-1.  The client certificate or its thumbprint, as specified in [@!RFC9440].
-2.  The TLS Exporter value derived from the client-to-proxy mTLS session.
+## Remote TLS Termination (Out of Scope)
 
-A new HTTP header is defined for conveying the exporter value:
+Deployments where TLS is terminated at a remote intermediary — such as a standalone load balancer or API gateway that is not co-located with the resource server — are outside the scope of this specification.
 
-~~~
-TLS-Exporter: <base64url-encoded exporter value>
-~~~
+In such topologies, the EKM cannot be conveyed to the verifier without introducing a trust dependency on the intermediary's assertion of what the EKM was. This changes the security property from "bound to the TLS session" to "bound to what a proxy claims the TLS session's EKM was" — a weaker and categorically different guarantee that undermines the core security claim of this specification. Allowing EKM to escape the session boundary via an HTTP header would recreate the kind of mediated-trust complexity that contributed to TLS Token Binding's adoption failures [@RFC8471][@RFC8472][@RFC8473].
 
-The proxy MUST derive the exporter using the label and parameters specified in (#tls-exporter-derivation) from the client-facing TLS session, and forward it in this header over a trusted, integrity-protected connection to the backend.
-
-The backend resource server MUST use the forwarded exporter value (instead of its own locally-derived value) when verifying the Session-Binding Proof.
-
-**Security Warning:** The `TLS-Exporter` header contains security-sensitive material. The connection between the proxy and backend MUST be integrity-protected (e.g., via a separate mTLS connection or a trusted network). The backend MUST NOT accept this header from untrusted sources.
+Deployments requiring TLS-terminating intermediaries SHOULD place the TLS termination point and the Session-Binding Proof verifier within the same trust boundary — for example, by running an Envoy-based sidecar as both the TLS endpoint and the proof verifier, co-located with the resource server backend.
 
 ## QUIC and HTTP/3
 
@@ -494,10 +502,6 @@ If the client's mTLS private key is compromised, the attacker can produce valid 
 *   **Short-lived certificates**: Using short-lived credentials (e.g., SPIFFE SVIDs with hourly or shorter expiry) limits the window during which a compromised key can be exploited.
 *   **Transitive Attestation**: [@I-D.draft-mw-wimse-transitive-attestation] binds identity to a verified execution context, providing evidence if the execution environment is tampered with.
 
-### TLS Proxy Trust
-
-The `TLS-Exporter` header introduces a trust dependency on the proxy. A compromised proxy could forge exporter values. Mitigations include mutual authentication between proxy and backend, and restricting the header to trusted network segments.
-
 # IANA Considerations
 
 ## OAuth Token Confirmation Methods
@@ -525,12 +529,6 @@ This specification registers the following HTTP header fields:
 ### Session-Binding-Proof
 
 *   **Header Field Name**: `Session-Binding-Proof`
-*   **Status**: permanent
-*   **Reference**: [this document]
-
-### TLS-Exporter
-
-*   **Header Field Name**: `TLS-Exporter`
 *   **Status**: permanent
 *   **Reference**: [this document]
 
@@ -1018,6 +1016,45 @@ Together they close the complete chain: workload identity is asserted and proven
     <title>Transitive Attestation for Sovereign Workloads: A WIMSE Profile</title>
     <author initials="R." surname="Krishnan" fullname="Ram Krishnan"/>
     <date month="March" year="2026"/>
+  </front>
+</reference>
+
+
+
+<reference anchor="RFC8471" target="https://www.rfc-editor.org/rfc/rfc8471">
+  <front>
+    <title>The Token Binding Protocol Version 1.0</title>
+    <author initials="A." surname="Popov" fullname="Andrei Popov"/>
+    <author initials="M." surname="Nystrom" fullname="Magnus Nystrom"/>
+    <author initials="D." surname="Balfanz" fullname="Dirk Balfanz"/>
+    <author initials="J." surname="Hodges" fullname="Jeff Hodges"/>
+    <date month="October" year="2018"/>
+  </front>
+</reference>
+
+
+
+<reference anchor="RFC8472" target="https://www.rfc-editor.org/rfc/rfc8472">
+  <front>
+    <title>Transport Layer Security (TLS) Extension for Token Binding Protocol Negotiation</title>
+    <author initials="A." surname="Popov" fullname="Andrei Popov"/>
+    <author initials="M." surname="Nystrom" fullname="Magnus Nystrom"/>
+    <author initials="D." surname="Balfanz" fullname="Dirk Balfanz"/>
+    <date month="October" year="2018"/>
+  </front>
+</reference>
+
+
+
+<reference anchor="RFC8473" target="https://www.rfc-editor.org/rfc/rfc8473">
+  <front>
+    <title>Token Binding over HTTP</title>
+    <author initials="A." surname="Popov" fullname="Andrei Popov"/>
+    <author initials="M." surname="Nystrom" fullname="Magnus Nystrom"/>
+    <author initials="D." surname="Balfanz" fullname="Dirk Balfanz"/>
+    <author initials="N." surname="Harper" fullname="Nick Harper"/>
+    <author initials="J." surname="Hodges" fullname="Jeff Hodges"/>
+    <date month="October" year="2018"/>
   </front>
 </reference>
 
