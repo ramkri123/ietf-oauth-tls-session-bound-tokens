@@ -1,6 +1,6 @@
 # Makefile for IETF Draft
 
-DRAFT := draft-mw-oauth-tls-session-bound-tokens-05
+DRAFT := draft-mw-oauth-tls-session-bound-tokens-06
 MMARK := $(HOME)/go/bin/mmark
 XML2RFC := $(HOME)/local/bin/xml2rfc
 
@@ -21,6 +21,7 @@ xml: $(DRAFT).xml
 
 $(DRAFT).xml: draft-mw-oauth-tls-session-bound-tokens.md
 	$(MMARK) $< > $@
+	sed -i 's|<rfc version="3"|<rfc version="3" docName="$(DRAFT)"|' $@
 
 $(DRAFT).txt: $(DRAFT).xml
 	$(XML2RFC) --text $< -o $@
