@@ -5,15 +5,16 @@
 OAuth                                                        R. Krishnan
 Internet-Draft                                       JPMorgan Chase & Co
 Intended status: Standards Track                               A. Prasad
-Expires: 7 November 2026                                          Oracle
+Expires: 24 November 2026                                         Oracle
                                                                 D. Lopez
                                                               Telefonica
                                                             S. Addepalli
                                                                   Aryaka
-                                                              6 May 2026
+                                                             23 May 2026
 
 
              TLS-Session-Bound Access Tokens for OAuth 2.0
+               draft-mw-oauth-tls-session-bound-tokens-05
 
 Abstract
 
@@ -49,14 +50,15 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 7 November 2026.
 
 
 
-Krishnan, et al.         Expires 7 November 2026                [Page 1]
+Krishnan, et al.        Expires 24 November 2026                [Page 1]
 
 Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
+
+   This Internet-Draft will expire on 24 November 2026.
 
 Copyright Notice
 
@@ -78,13 +80,13 @@ Table of Contents
      1.1.  The Bearer Token Replay Problem . . . . . . . . . . . . .   3
      1.2.  The Agentic AI Amplifier  . . . . . . . . . . . . . . . .   4
      1.3.  Conventions and Terminology . . . . . . . . . . . . . . .   5
-   2.  TLS Session Binding for Access Tokens . . . . . . . . . . . .   5
+   2.  TLS Session Binding for Access Tokens . . . . . . . . . . . .   6
      2.1.  Overview  . . . . . . . . . . . . . . . . . . . . . . . .   6
      2.2.  TLS Exporter Derivation . . . . . . . . . . . . . . . . .   6
      2.3.  Session-Binding Proof Format  . . . . . . . . . . . . . .   7
        2.3.1.  Header  . . . . . . . . . . . . . . . . . . . . . . .   7
        2.3.2.  Payload . . . . . . . . . . . . . . . . . . . . . . .   7
-       2.3.3.  Signature . . . . . . . . . . . . . . . . . . . . . .   8
+       2.3.3.  Signature . . . . . . . . . . . . . . . . . . . . . .   9
      2.4.  Token Confirmation Claim  . . . . . . . . . . . . . . . .   9
    3.  Protocol Flow . . . . . . . . . . . . . . . . . . . . . . . .   9
      3.1.  Token Issuance with Session Binding . . . . . . . . . . .   9
@@ -104,16 +106,16 @@ Table of Contents
    5.  Deployment Scope  . . . . . . . . . . . . . . . . . . . . . .  19
      5.1.  Co-Located TLS Termination (Supported)  . . . . . . . . .  19
      5.2.  Remote TLS Termination (Out of Scope) . . . . . . . . . .  19
-     5.3.  QUIC and HTTP/3 . . . . . . . . . . . . . . . . . . . . .  20
-   6.  Security Considerations . . . . . . . . . . . . . . . . . . .  20
 
 
 
-Krishnan, et al.         Expires 7 November 2026                [Page 2]
+Krishnan, et al.        Expires 24 November 2026                [Page 2]
 
 Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
 
+     5.3.  QUIC and HTTP/3 . . . . . . . . . . . . . . . . . . . . .  20
+   6.  Security Considerations . . . . . . . . . . . . . . . . . . .  20
      6.1.  Threat Model  . . . . . . . . . . . . . . . . . . . . . .  20
        6.1.1.  T1: Cross-Connection Token Replay . . . . . . . . . .  20
        6.1.2.  T2: Cross-Host Token Replay . . . . . . . . . . . . .  21
@@ -158,17 +160,20 @@ Internet-Draft          TLS-Session-Bound-Tokens                May 2026
    This is a known risk addressed by the OAuth 2.0 Security Best Current
    Practice [I-D.ietf-oauth-security-topics].
 
+
+
+
+
+
+Krishnan, et al.        Expires 24 November 2026                [Page 3]
+
+Internet-Draft          TLS-Session-Bound-Tokens                May 2026
+
+
    The Token Exchange protocol [RFC8693] amplifies this risk by enabling
    chained delegation across service boundaries.  Each exchange produces
    a new bearer token, and a compromise at any point in the chain
    exposes downstream tokens.
-
-
-
-Krishnan, et al.         Expires 7 November 2026                [Page 3]
-
-Internet-Draft          TLS-Session-Bound-Tokens                May 2026
-
 
    Existing mitigations address parts of this problem:
 
@@ -210,6 +215,17 @@ Internet-Draft          TLS-Session-Bound-Tokens                May 2026
       API calls across multiple services without human intervention,
       each potentially involving RFC 8693 token exchanges.
 
+
+
+
+
+
+
+Krishnan, et al.        Expires 24 November 2026                [Page 4]
+
+Internet-Draft          TLS-Session-Bound-Tokens                May 2026
+
+
    *  *Perform multi-hop delegation*: Agent A exchanges its token for a
       delegated token to call Agent B, which exchanges again for Agent
       C.  Each hop produces a new bearer token.  A single compromise
@@ -218,13 +234,6 @@ Internet-Draft          TLS-Session-Bound-Tokens                May 2026
    *  *Run for extended periods*: Agents operate autonomously for hours
       or days, providing a broad window for token interception and
       replay.
-
-
-
-Krishnan, et al.         Expires 7 November 2026                [Page 4]
-
-Internet-Draft          TLS-Session-Bound-Tokens                May 2026
-
 
    *  *Generate opaque traffic*: Agent-to-agent API calls are fully
       automated.  A replayed token produces legitimate-looking traffic
@@ -265,22 +274,18 @@ Internet-Draft          TLS-Session-Bound-Tokens                May 2026
       token that cryptographically binds the token to the current mTLS
       connection via the TLS Exporter value.
 
+
+
+
+Krishnan, et al.        Expires 24 November 2026                [Page 5]
+
+Internet-Draft          TLS-Session-Bound-Tokens                May 2026
+
+
    Token Exchange:  The protocol defined in [RFC8693] for exchanging one
       security token for another at an authorization server.
 
 2.  TLS Session Binding for Access Tokens
-
-
-
-
-
-
-
-
-Krishnan, et al.         Expires 7 November 2026                [Page 5]
-
-Internet-Draft          TLS-Session-Bound-Tokens                May 2026
-
 
 2.1.  Overview
 
@@ -325,18 +330,19 @@ Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
    *  *Context*: Empty (zero-length)
 
+
+
+
+Krishnan, et al.        Expires 24 November 2026                [Page 6]
+
+Internet-Draft          TLS-Session-Bound-Tokens                May 2026
+
+
    *  *Length*: 32 octets
 
    For TLS 1.3, the exporter is derived as specified in Section 7.5 of
    [RFC8446].  For TLS 1.2, the exporter is derived as specified in
    [RFC5705].
-
-
-
-Krishnan, et al.         Expires 7 November 2026                [Page 6]
-
-Internet-Draft          TLS-Session-Bound-Tokens                May 2026
-
 
    Note: By binding to the TLS Exporter rather than the application
    traffic keys, the binding remains valid across TLS 1.3 KeyUpdate
@@ -376,6 +382,18 @@ Internet-Draft          TLS-Session-Bound-Tokens                May 2026
    session binding, and OPTIONAL per-request claims for intra-session
    hardening.
 
+
+
+
+
+
+
+
+Krishnan, et al.        Expires 24 November 2026                [Page 7]
+
+Internet-Draft          TLS-Session-Bound-Tokens                May 2026
+
+
    {
      "ath": "<base64url SHA-256 hash of the access token>",
      "ekm": "<base64url TLS Exporter value>",
@@ -384,15 +402,6 @@ Internet-Draft          TLS-Session-Bound-Tokens                May 2026
      "htm": "POST",
      "htu": "/api/resource"
    }
-
-
-
-
-
-Krishnan, et al.         Expires 7 November 2026                [Page 7]
-
-Internet-Draft          TLS-Session-Bound-Tokens                May 2026
-
 
    Note: The example above shows all defined claims.  The ath, ekm, and
    iat claims are REQUIRED; the jti, htm, and htu claims are OPTIONAL
@@ -434,21 +443,18 @@ Internet-Draft          TLS-Session-Bound-Tokens                May 2026
       present, the resource server MUST verify that it matches the
       actual request URI.
 
+
+
+Krishnan, et al.        Expires 24 November 2026                [Page 8]
+
+Internet-Draft          TLS-Session-Bound-Tokens                May 2026
+
+
 2.3.3.  Signature
 
    The JWT MUST be signed using the private key corresponding to the
    client's mTLS certificate.  The signature algorithm MUST match the
    alg header parameter.
-
-
-
-
-
-
-Krishnan, et al.         Expires 7 November 2026                [Page 8]
-
-Internet-Draft          TLS-Session-Bound-Tokens                May 2026
-
 
 2.4.  Token Confirmation Claim
 
@@ -493,18 +499,14 @@ Internet-Draft          TLS-Session-Bound-Tokens                May 2026
        for this client, it includes the cnf claim with tls_exp set to
        the exporter label in the issued token.
 
-   4.  The client receives the token and notes the tls_exp requirement.
 
 
-
-
-
-
-
-Krishnan, et al.         Expires 7 November 2026                [Page 9]
+Krishnan, et al.        Expires 24 November 2026                [Page 9]
 
 Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
+
+   4.  The client receives the token and notes the tls_exp requirement.
 
 3.2.  Authorization Server Behavior
 
@@ -555,9 +557,7 @@ Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
 
 
-
-
-Krishnan, et al.         Expires 7 November 2026               [Page 10]
+Krishnan, et al.        Expires 24 November 2026               [Page 10]
 
 Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
@@ -613,7 +613,7 @@ Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
 
 
-Krishnan, et al.         Expires 7 November 2026               [Page 11]
+Krishnan, et al.        Expires 24 November 2026               [Page 11]
 
 Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
@@ -669,7 +669,7 @@ Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
 
 
-Krishnan, et al.         Expires 7 November 2026               [Page 12]
+Krishnan, et al.        Expires 24 November 2026               [Page 12]
 
 Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
@@ -725,7 +725,7 @@ Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
 
 
-Krishnan, et al.         Expires 7 November 2026               [Page 13]
+Krishnan, et al.        Expires 24 November 2026               [Page 13]
 
 Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
@@ -781,7 +781,7 @@ Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
 
 
-Krishnan, et al.         Expires 7 November 2026               [Page 14]
+Krishnan, et al.        Expires 24 November 2026               [Page 14]
 
 Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
@@ -837,7 +837,7 @@ Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
 
 
-Krishnan, et al.         Expires 7 November 2026               [Page 15]
+Krishnan, et al.        Expires 24 November 2026               [Page 15]
 
 Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
@@ -893,7 +893,7 @@ Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
 
 
-Krishnan, et al.         Expires 7 November 2026               [Page 16]
+Krishnan, et al.        Expires 24 November 2026               [Page 16]
 
 Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
@@ -949,7 +949,7 @@ Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
 
 
-Krishnan, et al.         Expires 7 November 2026               [Page 17]
+Krishnan, et al.        Expires 24 November 2026               [Page 17]
 
 Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
@@ -1005,7 +1005,7 @@ Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
 
 
-Krishnan, et al.         Expires 7 November 2026               [Page 18]
+Krishnan, et al.        Expires 24 November 2026               [Page 18]
 
 Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
@@ -1061,7 +1061,7 @@ Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
 
 
-Krishnan, et al.         Expires 7 November 2026               [Page 19]
+Krishnan, et al.        Expires 24 November 2026               [Page 19]
 
 Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
@@ -1117,7 +1117,7 @@ Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
 
 
-Krishnan, et al.         Expires 7 November 2026               [Page 20]
+Krishnan, et al.        Expires 24 November 2026               [Page 20]
 
 Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
@@ -1173,7 +1173,7 @@ Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
 
 
-Krishnan, et al.         Expires 7 November 2026               [Page 21]
+Krishnan, et al.        Expires 24 November 2026               [Page 21]
 
 Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
@@ -1229,7 +1229,7 @@ Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
 
 
-Krishnan, et al.         Expires 7 November 2026               [Page 22]
+Krishnan, et al.        Expires 24 November 2026               [Page 22]
 
 Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
@@ -1285,7 +1285,7 @@ Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
 
 
-Krishnan, et al.         Expires 7 November 2026               [Page 23]
+Krishnan, et al.        Expires 24 November 2026               [Page 23]
 
 Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
@@ -1321,30 +1321,12 @@ Internet-Draft          TLS-Session-Bound-Tokens                May 2026
               Layer Security (TLS)", March 2010,
               <https://www.rfc-editor.org/rfc/rfc5705>.
 
-   [RFC8693]  Jones, M., Nadalin, A., Campbell, B., Bradley, J., and C.
-              Mortimore, "OAuth 2.0 Token Exchange", January 2020,
-              <https://www.rfc-editor.org/rfc/rfc8693>.
-
-   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
-              Requirement Levels", March 1997,
-              <https://www.rfc-editor.org/rfc/rfc2119>.
-
-   [RFC7800]  Jones, M., Bradley, J., and H. Tschofenig, "Proof-of-
-              Possession Key Semantics for JSON Web Tokens (JWTs)",
-              April 2016, <https://www.rfc-editor.org/rfc/rfc7800>.
-
    [RFC7662]  Richer, J., "OAuth 2.0 Token Introspection", October 2015,
               <https://www.rfc-editor.org/rfc/rfc7662>.
 
-
-
-
-
-
-Krishnan, et al.         Expires 7 November 2026               [Page 24]
-
-Internet-Draft          TLS-Session-Bound-Tokens                May 2026
-
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", May 2017,
+              <https://www.rfc-editor.org/rfc/rfc8174>.
 
    [RFC9449]  Fett, D., Campbell, B., Bradley, J., Lodderstedt, T.,
               Jones, M., and D. Waite, "OAuth 2.0 Demonstrating Proof of
@@ -1355,14 +1337,31 @@ Internet-Draft          TLS-Session-Bound-Tokens                May 2026
               Version 1.3", August 2018,
               <https://www.rfc-editor.org/rfc/rfc8446>.
 
-   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
-              2119 Key Words", May 2017,
-              <https://www.rfc-editor.org/rfc/rfc8174>.
+
+
+
+
+Krishnan, et al.        Expires 24 November 2026               [Page 24]
+
+Internet-Draft          TLS-Session-Bound-Tokens                May 2026
+
+
+   [RFC7800]  Jones, M., Bradley, J., and H. Tschofenig, "Proof-of-
+              Possession Key Semantics for JSON Web Tokens (JWTs)",
+              April 2016, <https://www.rfc-editor.org/rfc/rfc7800>.
+
+   [RFC8693]  Jones, M., Nadalin, A., Campbell, B., Bradley, J., and C.
+              Mortimore, "OAuth 2.0 Token Exchange", January 2020,
+              <https://www.rfc-editor.org/rfc/rfc8693>.
 
    [RFC8705]  Campbell, B., Bradley, J., Sakimura, N., and T.
               Lodderstedt, "OAuth 2.0 Mutual-TLS Client Authentication
               and Certificate-Bound Access Tokens", February 2020,
               <https://www.rfc-editor.org/rfc/rfc8705>.
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", March 1997,
+              <https://www.rfc-editor.org/rfc/rfc2119>.
 
 9.  Informative References
 
@@ -1371,18 +1370,9 @@ Internet-Draft          TLS-Session-Bound-Tokens                May 2026
               October 2024, <https://datatracker.ietf.org/doc/html/
               draft-ietf-wimse-s2s-protocol>.
 
-   [I-D.draft-mw-wimse-transitive-attestation]
-              Krishnan, R., "Transitive Attestation for Sovereign
-              Workloads: A WIMSE Profile", March 2026,
-              <https://datatracker.ietf.org/doc/html/draft-mw-wimse-
-              transitive-attestation>.
-
-   [RFC8473]  Popov, A., Nystrom, M., Balfanz, D., Harper, N., and J.
-              Hodges, "Token Binding over HTTP", October 2018,
-              <https://www.rfc-editor.org/rfc/rfc8473>.
-
-   [RFC9001]  Thomson, M. and S. Turner, "Using TLS to Secure QUIC", May
-              2021, <https://www.rfc-editor.org/rfc/rfc9001>.
+   [RFC9000]  Iyengar, J. and M. Thomson, "QUIC: A UDP-Based Multiplexed
+              and Secure Transport", May 2021,
+              <https://www.rfc-editor.org/rfc/rfc9000>.
 
    [I-D.ietf-oauth-security-topics]
               Lodderstedt, T., Bradley, J., Labunets, A., and D. Fett,
@@ -1390,25 +1380,36 @@ Internet-Draft          TLS-Session-Bound-Tokens                May 2026
               <https://datatracker.ietf.org/doc/html/draft-ietf-oauth-
               security-topics>.
 
+   [RFC8471]  Popov, A., Nystrom, M., Balfanz, D., and J. Hodges, "The
+              Token Binding Protocol Version 1.0", October 2018,
+              <https://www.rfc-editor.org/rfc/rfc8471>.
+
    [RFC8472]  Popov, A., Nystrom, M., and D. Balfanz, "Transport Layer
               Security (TLS) Extension for Token Binding Protocol
               Negotiation", October 2018,
               <https://www.rfc-editor.org/rfc/rfc8472>.
 
+   [RFC8473]  Popov, A., Nystrom, M., Balfanz, D., Harper, N., and J.
+              Hodges, "Token Binding over HTTP", October 2018,
+              <https://www.rfc-editor.org/rfc/rfc8473>.
 
 
-Krishnan, et al.         Expires 7 November 2026               [Page 25]
+
+
+
+Krishnan, et al.        Expires 24 November 2026               [Page 25]
 
 Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
 
-   [RFC9000]  Iyengar, J. and M. Thomson, "QUIC: A UDP-Based Multiplexed
-              and Secure Transport", May 2021,
-              <https://www.rfc-editor.org/rfc/rfc9000>.
+   [RFC9001]  Thomson, M. and S. Turner, "Using TLS to Secure QUIC", May
+              2021, <https://www.rfc-editor.org/rfc/rfc9001>.
 
-   [RFC8471]  Popov, A., Nystrom, M., Balfanz, D., and J. Hodges, "The
-              Token Binding Protocol Version 1.0", October 2018,
-              <https://www.rfc-editor.org/rfc/rfc8471>.
+   [I-D.draft-mw-wimse-transitive-attestation]
+              Krishnan, R., "Transitive Attestation for Sovereign
+              Workloads: A WIMSE Profile", March 2026,
+              <https://datatracker.ietf.org/doc/html/draft-mw-wimse-
+              transitive-attestation>.
 
 Appendix A.  Contributors
 
@@ -1452,8 +1453,7 @@ B.1.  Architecture
 
 
 
-
-Krishnan, et al.         Expires 7 November 2026               [Page 26]
+Krishnan, et al.        Expires 24 November 2026               [Page 26]
 
 Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
@@ -1509,7 +1509,7 @@ B.2.  Request Flow
 
 
 
-Krishnan, et al.         Expires 7 November 2026               [Page 27]
+Krishnan, et al.        Expires 24 November 2026               [Page 27]
 
 Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
@@ -1565,7 +1565,7 @@ Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
 
 
-Krishnan, et al.         Expires 7 November 2026               [Page 28]
+Krishnan, et al.        Expires 24 November 2026               [Page 28]
 
 Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
@@ -1621,7 +1621,7 @@ B.4.  Security Benefits
 
 
 
-Krishnan, et al.         Expires 7 November 2026               [Page 29]
+Krishnan, et al.        Expires 24 November 2026               [Page 29]
 
 Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
@@ -1677,7 +1677,7 @@ B.6.1.  Connection Lifecycle Management
 
 
 
-Krishnan, et al.         Expires 7 November 2026               [Page 30]
+Krishnan, et al.        Expires 24 November 2026               [Page 30]
 
 Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
@@ -1733,7 +1733,7 @@ C.1.  Identity-Provenance Property
 
 
 
-Krishnan, et al.         Expires 7 November 2026               [Page 31]
+Krishnan, et al.        Expires 24 November 2026               [Page 31]
 
 Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
@@ -1789,7 +1789,7 @@ C.2.1.  Without Sidecar (Direct Integration)
 
 
 
-Krishnan, et al.         Expires 7 November 2026               [Page 32]
+Krishnan, et al.        Expires 24 November 2026               [Page 32]
 
 Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
@@ -1845,7 +1845,7 @@ Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
 
 
-Krishnan, et al.         Expires 7 November 2026               [Page 33]
+Krishnan, et al.        Expires 24 November 2026               [Page 33]
 
 Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
@@ -1901,7 +1901,7 @@ C.2.2.  With Sidecar (Recommended for Agentic AI)
 
 
 
-Krishnan, et al.         Expires 7 November 2026               [Page 34]
+Krishnan, et al.        Expires 24 November 2026               [Page 34]
 
 Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
@@ -1957,7 +1957,7 @@ Authors' Addresses
 
 
 
-Krishnan, et al.         Expires 7 November 2026               [Page 35]
+Krishnan, et al.        Expires 24 November 2026               [Page 35]
 
 Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
@@ -2013,4 +2013,4 @@ Internet-Draft          TLS-Session-Bound-Tokens                May 2026
 
 
 
-Krishnan, et al.         Expires 7 November 2026               [Page 36]
+Krishnan, et al.        Expires 24 November 2026               [Page 36]

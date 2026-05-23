@@ -2,7 +2,7 @@
 title = "TLS-Session-Bound Access Tokens for OAuth 2.0"
 abbrev = "TLS-Session-Bound-Tokens"
 category = "std"
-docName = "draft-mw-oauth-tls-session-bound-tokens-06"
+docName = "draft-mw-oauth-tls-session-bound-tokens-05"
 ipr = "trust200902"
 area = "Security"
 workgroup = "OAuth"
@@ -11,7 +11,7 @@ date = 2026-05-23
 
 [seriesInfo]
 name = "Internet-Draft"
-value = "draft-mw-oauth-tls-session-bound-tokens-06"
+value = "draft-mw-oauth-tls-session-bound-tokens-05"
 stream = "IETF"
 status = "standard"
 
