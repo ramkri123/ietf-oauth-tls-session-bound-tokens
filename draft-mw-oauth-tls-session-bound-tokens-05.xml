@@ -1,18 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- name="GENERATOR" content="github.com/mmarkdown/mmark Mmark Markdown Processor - mmark.miek.nl" -->
-<rfc version="3" ipr="trust200902" docName="draft-mw-oauth-tls-session-bound-tokens-05" submissionType="IETF" category="std" xml:lang="en" xmlns:xi="http://www.w3.org/2001/XInclude" indexInclude="true">
+<!-- name="GENERATOR" content="github.com/mmarkdown/mmark Mmark Markdown Processor - mmark.nl" -->
+<rfc version="3" ipr="trust200902" submissionType="IETF" category="std" xml:lang="en" consensus="true" xmlns:xi="http://www.w3.org/2001/XInclude">
 
 <front>
 <title abbrev="TLS-Session-Bound-Tokens">TLS-Session-Bound Access Tokens for OAuth 2.0</title><seriesInfo value="draft-mw-oauth-tls-session-bound-tokens-05" stream="IETF" status="standard" name="Internet-Draft"></seriesInfo>
 <author initials="R." surname="Krishnan" fullname="Ram Krishnan"><organization>JPMorgan Chase &amp; Co</organization><address><postal><street></street>
 </postal><email>ramkri123@gmail.com</email>
-</address></author><author initials="A." surname="Prasad" fullname="A Prasad"><organization>Oracle</organization><address><postal><street></street>
+</address></author>
+<author initials="A." surname="Prasad" fullname="A Prasad"><organization>Oracle</organization><address><postal><street></street>
 </postal><email>a.prasad@oracle.com</email>
-</address></author><author initials="D." surname="Lopez" fullname="Diego R. Lopez"><organization>Telefonica</organization><address><postal><street></street>
+</address></author>
+<author initials="D." surname="Lopez" fullname="Diego R. Lopez"><organization>Telefonica</organization><address><postal><street></street>
 </postal><email>diego.r.lopez@telefonica.com</email>
-</address></author><author initials="S." surname="Addepalli" fullname="Srinivasa Addepalli"><organization>Aryaka</organization><address><postal><street></street>
+</address></author>
+<author initials="S." surname="Addepalli" fullname="Srinivasa Addepalli"><organization>Aryaka</organization><address><postal><street></street>
 </postal><email>srinivasa.addepalli@aryaka.com</email>
-</address></author><date year="2026" month="May" day="6"></date>
+</address></author>
+<date year="2026" month="May" day="6"></date>
 <area>Security</area>
 <workgroup>OAuth</workgroup>
 <keyword>oauth</keyword>
@@ -38,10 +42,13 @@
 <t>The Token Exchange protocol <xref target="RFC8693"></xref> amplifies this risk by enabling chained delegation across service boundaries. Each exchange produces a new bearer token, and a compromise at any point in the chain exposes downstream tokens.</t>
 <t>Existing mitigations address parts of this problem:</t>
 
-<ul spacing="compact">
-<li><strong>RFC 8705 (mTLS Certificate-Bound Tokens)</strong> <xref target="RFC8705"></xref>: Binds the token to the client's X.509 certificate thumbprint. However, the binding is to the <em>certificate identity</em>, not the <em>TLS connection</em>. If the same certificate is used across connections, or if the certificate and token are both exfiltrated, the token remains replayable.</li>
-<li><strong>RFC 9449 (DPoP)</strong> <xref target="RFC9449"></xref>: Provides application-layer proof-of-possession using ephemeral, application-managed keys. Applicable to both public and confidential clients, but binds to the key, not to the TLS channel, and requires generating and managing a separate key pair.</li>
-<li><strong>Token Binding (RFC 8471-8473)</strong>: Proposed direct TLS session binding but required a new TLS extension, was never specified for Token Exchange, encountered adoption barriers in browsers and TLS 1.3 transitions, and was ultimately abandoned.</li>
+<ul>
+<li><t><strong>RFC 8705 (mTLS Certificate-Bound Tokens)</strong> <xref target="RFC8705"></xref>: Binds the token to the client's X.509 certificate thumbprint. However, the binding is to the <em>certificate identity</em>, not the <em>TLS connection</em>. If the same certificate is used across connections, or if the certificate and token are both exfiltrated, the token remains replayable.</t>
+</li>
+<li><t><strong>RFC 9449 (DPoP)</strong> <xref target="RFC9449"></xref>: Provides application-layer proof-of-possession using ephemeral, application-managed keys. Applicable to both public and confidential clients, but binds to the key, not to the TLS channel, and requires generating and managing a separate key pair.</t>
+</li>
+<li><t><strong>Token Binding</strong> <xref target="RFC8471"></xref><xref target="RFC8472"></xref><xref target="RFC8473"></xref>: Proposed direct TLS session binding but required a new TLS extension, was never specified for Token Exchange, encountered adoption barriers in browsers and TLS 1.3 transitions, and was ultimately abandoned.</t>
+</li>
 </ul>
 <t>None of these mechanisms provide <strong>TLS-connection-level binding</strong> for OAuth 2.0 access tokens in mTLS environments. This specification fills that gap by reusing the existing mTLS key pair (no additional key generation) and amortizing the proof to once per (token, connection) pair rather than once per request — delivering stronger binding than DPoP at lower per-request cost. The binding mechanism relies on TLS Exporter values, which are available in TLS 1.2, TLS 1.3, and QUIC (via its integrated TLS 1.3 handshake), making the specification transport-agnostic across modern encrypted transports.</t>
 </section>
@@ -49,12 +56,17 @@
 <section anchor="the-agentic-ai-amplifier"><name>The Agentic AI Amplifier</name>
 <t>The rise of autonomous AI agents dramatically amplifies the bearer token replay risk. Unlike traditional OAuth flows where a human initiates discrete requests, agentic AI systems:</t>
 
-<ul spacing="compact">
-<li><strong>Autonomously chain API calls</strong>: An agent may invoke hundreds of API calls across multiple services without human intervention, each potentially involving RFC 8693 token exchanges.</li>
-<li><strong>Perform multi-hop delegation</strong>: Agent A exchanges its token for a delegated token to call Agent B, which exchanges again for Agent C. Each hop produces a new bearer token. A single compromise anywhere in this chain exposes all downstream tokens.</li>
-<li><strong>Run for extended periods</strong>: Agents operate autonomously for hours or days, providing a broad window for token interception and replay.</li>
-<li><strong>Generate opaque traffic</strong>: Agent-to-agent API calls are fully automated. A replayed token produces legitimate-looking traffic that is extremely difficult to distinguish from genuine requests—there is no human in the loop to detect anomalies.</li>
-<li><strong>Are susceptible to prompt injection</strong>: A compromised or prompt-injected LLM agent can exfiltrate bearer tokens via tool calls, side channels, or log leakage. These tokens are immediately usable from any connection.</li>
+<ul>
+<li><t><strong>Autonomously chain API calls</strong>: An agent may invoke hundreds of API calls across multiple services without human intervention, each potentially involving RFC 8693 token exchanges.</t>
+</li>
+<li><t><strong>Perform multi-hop delegation</strong>: Agent A exchanges its token for a delegated token to call Agent B, which exchanges again for Agent C. Each hop produces a new bearer token. A single compromise anywhere in this chain exposes all downstream tokens.</t>
+</li>
+<li><t><strong>Run for extended periods</strong>: Agents operate autonomously for hours or days, providing a broad window for token interception and replay.</t>
+</li>
+<li><t><strong>Generate opaque traffic</strong>: Agent-to-agent API calls are fully automated. A replayed token produces legitimate-looking traffic that is extremely difficult to distinguish from genuine requests—there is no human in the loop to detect anomalies.</t>
+</li>
+<li><t><strong>Are susceptible to prompt injection</strong>: A compromised or prompt-injected LLM agent can exfiltrate bearer tokens via tool calls, side channels, or log leakage. These tokens are immediately usable from any connection.</t>
+</li>
 </ul>
 <t>These characteristics make bearer token replay a <strong>first-order threat</strong> in agentic AI architectures. As autonomous agents increasingly drive API-to-API traffic volumes that exceed human-initiated requests, per-request cryptographic overhead becomes a significant scaling concern. This document addresses this gap by binding access tokens to the mTLS connection on which they are presented, with proof amortization that scales to high-volume agent traffic.</t>
 </section>
@@ -63,13 +75,16 @@
 <t>The key words &quot;MUST&quot;, &quot;MUST NOT&quot;, &quot;REQUIRED&quot;, &quot;SHALL&quot;, &quot;SHALL NOT&quot;, &quot;SHOULD&quot;, &quot;SHOULD NOT&quot;, &quot;RECOMMENDED&quot;, &quot;NOT RECOMMENDED&quot;, &quot;MAY&quot;, and &quot;OPTIONAL&quot; in this document are to be interpreted as described in BCP 14 <xref target="RFC2119"></xref> <xref target="RFC8174"></xref> when, and only when, they appear in all capitals, as shown here.</t>
 <t>This document uses the following terms:</t>
 
-<dl spacing="compact">
+<dl>
 <dt>TLS Exporter Value (EKM):</dt>
-<dd>A value derived from the TLS handshake using the mechanism defined in <xref target="RFC5705"></xref> (for TLS 1.2) or Section 7.5 of <xref target="RFC8446"></xref> (for TLS 1.3). EKM stands for Exported Keying Material. The exporter value is unique to the specific TLS connection and is available to both endpoints. This document uses &quot;EKM&quot; and &quot;TLS Exporter value&quot; interchangeably.</dd>
+<dd><t>A value derived from the TLS handshake using the mechanism defined in <xref target="RFC5705"></xref> (for TLS 1.2) or Section 7.5 of <xref target="RFC8446"></xref> (for TLS 1.3). EKM stands for Exported Keying Material. The exporter value is unique to the specific TLS connection and is available to both endpoints. This document uses &quot;EKM&quot; and &quot;TLS Exporter value&quot; interchangeably.</t>
+</dd>
 <dt>Session-Binding Proof:</dt>
-<dd>A signed JWT presented alongside the access token that cryptographically binds the token to the current mTLS connection via the TLS Exporter value.</dd>
+<dd><t>A signed JWT presented alongside the access token that cryptographically binds the token to the current mTLS connection via the TLS Exporter value.</t>
+</dd>
 <dt>Token Exchange:</dt>
-<dd>The protocol defined in <xref target="RFC8693"></xref> for exchanging one security token for another at an authorization server.</dd>
+<dd><t>The protocol defined in <xref target="RFC8693"></xref> for exchanging one security token for another at an authorization server.</t>
+</dd>
 </dl>
 </section>
 </section>
@@ -79,11 +94,15 @@
 <section anchor="overview"><name>Overview</name>
 <t>This specification defines a proof-of-possession mechanism that binds OAuth 2.0 access tokens to the mTLS connection on which they are presented. While applicable to any OAuth 2.0 access token, it is primarily designed for tokens issued via the Token Exchange protocol <xref target="RFC8693"></xref>, where multi-hop delegation creates elevated replay risk. The mechanism operates as follows:</t>
 
-<ol spacing="compact">
-<li>The client and resource server establish an mTLS connection. Both sides derive a TLS Exporter value unique to this connection.</li>
-<li>When first presenting an access token on a given connection, the client constructs a <strong>Session-Binding Proof</strong>: a JWT containing the hash of the access token and the TLS Exporter value.</li>
-<li>The client signs this JWT with the private key corresponding to its mTLS client certificate. The same proof MAY be reused for all subsequent requests using that token on the same connection.</li>
-<li>The resource server verifies the proof by checking the signature against the client certificate's public key, confirming the exporter value matches the current connection, confirming the token hash matches the presented access token, and confirming the issuance time is within an acceptable window. The server MUST perform these checks on every request but MAY use a per-connection cache to reduce subsequent verifications to a cache lookup.</li>
+<ol>
+<li><t>The client and resource server establish an mTLS connection. Both sides derive a TLS Exporter value unique to this connection.</t>
+</li>
+<li><t>When first presenting an access token on a given connection, the client constructs a <strong>Session-Binding Proof</strong>: a JWT containing the hash of the access token and the TLS Exporter value.</t>
+</li>
+<li><t>The client signs this JWT with the private key corresponding to its mTLS client certificate. The same proof MAY be reused for all subsequent requests using that token on the same connection.</t>
+</li>
+<li><t>The resource server verifies the proof by checking the signature against the client certificate's public key, confirming the exporter value matches the current connection, confirming the token hash matches the presented access token, and confirming the issuance time is within an acceptable window. The server MUST perform these checks on every request but MAY use a per-connection cache to reduce subsequent verifications to a cache lookup.</t>
+</li>
 </ol>
 <t>A token that requires session binding includes a confirmation method claim (<tt>tls_exp</tt>) containing the TLS Exporter label, which signals to the resource server that the Session-Binding Proof MUST be presented and verified.</t>
 </section>
@@ -91,10 +110,13 @@
 <section anchor="tls-exporter-derivation"><name>TLS Exporter Derivation</name>
 <t>Both the client and resource server MUST derive the TLS Exporter value using the following parameters:</t>
 
-<ul spacing="compact">
-<li><strong>Label</strong>: <tt>EXPORTER-oauth-tls-session-bound</tt></li>
-<li><strong>Context</strong>: Empty (zero-length)</li>
-<li><strong>Length</strong>: 32 octets</li>
+<ul>
+<li><t><strong>Label</strong>: <tt>EXPORTER-oauth-tls-session-bound</tt></t>
+</li>
+<li><t><strong>Context</strong>: Empty (zero-length)</t>
+</li>
+<li><t><strong>Length</strong>: 32 octets</t>
+</li>
 </ul>
 <t>For TLS 1.3, the exporter is derived as specified in Section 7.5 of <xref target="RFC8446"></xref>. For TLS 1.2, the exporter is derived as specified in <xref target="RFC5705"></xref>.</t>
 <t>Note: By binding to the TLS Exporter rather than the application traffic keys, the binding remains valid across TLS 1.3 <tt>KeyUpdate</tt> operations. Standard key rotation refreshes traffic keys but does not change the exporter master secret, avoiding unnecessary re-proof cycles while maintaining strong connection binding.</t>
@@ -106,52 +128,58 @@
 
 <section anchor="header"><name>Header</name>
 
-<sourcecode type="json"><![CDATA[{
-  "typ": "tls-binding-proof+jwt",
-  "alg": "ES256",
-  "x5t#S256": "<base64url SHA-256 thumbprint of client certificate>"
+<sourcecode type="json">{
+  &quot;typ&quot;: &quot;tls-binding-proof+jwt&quot;,
+  &quot;alg&quot;: &quot;ES256&quot;,
+  &quot;x5t#S256&quot;: &quot;&lt;base64url SHA-256 thumbprint of client certificate&gt;&quot;
 }
-]]></sourcecode>
+</sourcecode>
 <t>The <tt>alg</tt> value MUST match the key type of the client's mTLS certificate. The <tt>x5t#S256</tt> value MUST be the base64url-encoded SHA-256 thumbprint of the DER-encoded client certificate, as defined in <xref target="RFC8705"></xref>.</t>
 </section>
 
 <section anchor="payload"><name>Payload</name>
 <t>The payload contains REQUIRED connection-level claims that prove session binding, and OPTIONAL per-request claims for intra-session hardening.</t>
 
-<sourcecode type="json"><![CDATA[{
-  "ath": "<base64url SHA-256 hash of the access token>",
-  "ekm": "<base64url TLS Exporter value>",
-  "iat": 1710820000,
-  "jti": "<unique identifier>",
-  "htm": "POST",
-  "htu": "/api/resource"
+<sourcecode type="json">{
+  &quot;ath&quot;: &quot;&lt;base64url SHA-256 hash of the access token&gt;&quot;,
+  &quot;ekm&quot;: &quot;&lt;base64url TLS Exporter value&gt;&quot;,
+  &quot;iat&quot;: 1710820000,
+  &quot;jti&quot;: &quot;&lt;unique identifier&gt;&quot;,
+  &quot;htm&quot;: &quot;POST&quot;,
+  &quot;htu&quot;: &quot;/api/resource&quot;
 }
-]]></sourcecode>
+</sourcecode>
 <t>Note: The example above shows all defined claims. The <tt>ath</tt>, <tt>ekm</tt>, and <tt>iat</tt> claims are REQUIRED; the <tt>jti</tt>, <tt>htm</tt>, and <tt>htu</tt> claims are OPTIONAL per-request claims included only when intra-session hardening is required.</t>
 <t>The payload claims are defined as follows:</t>
 
 <section anchor="connection-level-claims-required"><name>Connection-Level Claims (REQUIRED)</name>
 
-<dl spacing="compact">
+<dl>
 <dt>ath:</dt>
-<dd>REQUIRED. The base64url-encoded SHA-256 hash of the ASCII encoding of the associated access token value.</dd>
+<dd><t>REQUIRED. The base64url-encoded SHA-256 hash of the ASCII encoding of the associated access token value.</t>
+</dd>
 <dt>ekm:</dt>
-<dd>REQUIRED. The base64url-encoded TLS Exporter value derived as specified in <xref target="tls-exporter-derivation"></xref>.</dd>
+<dd><t>REQUIRED. The base64url-encoded TLS Exporter value derived as specified in <xref target="tls-exporter-derivation"></xref>.</t>
+</dd>
 <dt>iat:</dt>
-<dd>REQUIRED. The time at which the proof was issued, as a NumericDate (seconds since the Unix epoch). The resource server MUST verify that this value is within an acceptable window.</dd>
+<dd><t>REQUIRED. The time at which the proof was issued, as a NumericDate (seconds since the Unix epoch). The resource server MUST verify that this value is within an acceptable window.</t>
+</dd>
 </dl>
 </section>
 
 <section anchor="per-request-claims-optional"><name>Per-Request Claims (OPTIONAL)</name>
 <t>The following claims provide intra-session request-level binding. They are OPTIONAL and intended for deployments that require defense-in-depth against intra-connection replay. When omitted, the proof can be reused across all requests on the same connection for the same token.</t>
 
-<dl spacing="compact">
+<dl>
 <dt>jti:</dt>
-<dd>OPTIONAL. A unique identifier for the proof. When present, the resource server MUST verify that this value has not been seen before within the token's validity period.</dd>
+<dd><t>OPTIONAL. A unique identifier for the proof. When present, the resource server MUST verify that this value has not been seen before within the token's validity period.</t>
+</dd>
 <dt>htm:</dt>
-<dd>OPTIONAL. The HTTP method of the request to which the proof is attached (e.g., &quot;GET&quot;, &quot;POST&quot;). When present, the resource server MUST verify that it matches the actual request method.</dd>
+<dd><t>OPTIONAL. The HTTP method of the request to which the proof is attached (e.g., &quot;GET&quot;, &quot;POST&quot;). When present, the resource server MUST verify that it matches the actual request method.</t>
+</dd>
 <dt>htu:</dt>
-<dd>OPTIONAL. The HTTP target URI of the request to which the proof is attached, without query and fragment parts. When present, the resource server MUST verify that it matches the actual request URI.</dd>
+<dd><t>OPTIONAL. The HTTP target URI of the request to which the proof is attached, without query and fragment parts. When present, the resource server MUST verify that it matches the actual request URI.</t>
+</dd>
 </dl>
 </section>
 </section>
@@ -164,19 +192,21 @@
 <section anchor="token-confirmation-claim"><name>Token Confirmation Claim</name>
 <t>An authorization server that supports TLS-session-bound access tokens MUST include a <tt>cnf</tt> (confirmation) claim in the issued access token (when the token is a JWT) or in the token introspection response. The <tt>cnf</tt> claim MUST contain:</t>
 
-<sourcecode type="json"><![CDATA[{
-  "cnf": {
-    "x5t#S256": "<cert-thumbprint>",
-    "tls_exp": "EXPORTER-oauth-tls-session-bound"
+<sourcecode type="json">{
+  &quot;cnf&quot;: {
+    &quot;x5t#S256&quot;: &quot;&lt;cert-thumbprint&gt;&quot;,
+    &quot;tls_exp&quot;: &quot;EXPORTER-oauth-tls-session-bound&quot;
   }
 }
-]]></sourcecode>
+</sourcecode>
 
-<dl spacing="compact">
+<dl>
 <dt>x5t#S256:</dt>
-<dd>REQUIRED. The certificate thumbprint as defined in <xref target="RFC8705"></xref>.</dd>
+<dd><t>REQUIRED. The certificate thumbprint as defined in <xref target="RFC8705"></xref>.</t>
+</dd>
 <dt>tls_exp:</dt>
-<dd>REQUIRED. A string value containing the TLS Exporter label that the client and resource server MUST use to derive the session-binding value. The presence of this claim signals that the resource server MUST require and verify a Session-Binding Proof whenever this token is presented. This follows the pattern of existing <tt>cnf</tt> members which carry key/binding material rather than boolean flags (see <xref target="RFC7800"></xref>).</dd>
+<dd><t>REQUIRED. A string value containing the TLS Exporter label that the client and resource server MUST use to derive the session-binding value. The presence of this claim signals that the resource server MUST require and verify a Session-Binding Proof whenever this token is presented. This follows the pattern of existing <tt>cnf</tt> members which carry key/binding material rather than boolean flags (see <xref target="RFC7800"></xref>).</t>
+</dd>
 </dl>
 </section>
 </section>
@@ -186,42 +216,50 @@
 <section anchor="token-issuance-with-session-binding"><name>Token Issuance with Session Binding</name>
 <t>The mechanism for requesting and issuing TLS-session-bound tokens is as follows:</t>
 
-<ol spacing="compact">
-<li>The client authenticates to the authorization server using mTLS and requests a token. This MAY be a token exchange per <xref target="RFC8693"></xref>, a client credentials grant, or any other OAuth 2.0 grant type.</li>
-<li>The authorization server issues a new access token.</li>
-<li>If the authorization server policy requires TLS session binding for this client, it includes the <tt>cnf</tt> claim with <tt>tls_exp</tt> set to the exporter label in the issued token.</li>
-<li>The client receives the token and notes the <tt>tls_exp</tt> requirement.</li>
+<ol>
+<li><t>The client authenticates to the authorization server using mTLS and requests a token. This MAY be a token exchange per <xref target="RFC8693"></xref>, a client credentials grant, or any other OAuth 2.0 grant type.</t>
+</li>
+<li><t>The authorization server issues a new access token.</t>
+</li>
+<li><t>If the authorization server policy requires TLS session binding for this client, it includes the <tt>cnf</tt> claim with <tt>tls_exp</tt> set to the exporter label in the issued token.</t>
+</li>
+<li><t>The client receives the token and notes the <tt>tls_exp</tt> requirement.</t>
+</li>
 </ol>
 </section>
 
 <section anchor="authorization-server-behavior"><name>Authorization Server Behavior</name>
 <t>The authorization server determines whether to issue TLS-session-bound tokens based on per-client configuration. The following client registration metadata parameter is defined:</t>
 
-<dl spacing="compact">
-<dt>tls_session_bound_access_tokens:</dt>
-<dd>OPTIONAL. A boolean value indicating that the authorization server MUST issue TLS-session-bound access tokens for this client. When set to <tt>true</tt>, the authorization server includes the <tt>tls_exp</tt> confirmation method in all access tokens issued to this client. Defaults to <tt>false</tt>.</dd>
+<dl>
+<dt>tls<em>session</em>bound<em>access</em>tokens:</dt>
+<dd><t>OPTIONAL. A boolean value indicating that the authorization server MUST issue TLS-session-bound access tokens for this client. When set to <tt>true</tt>, the authorization server includes the <tt>tls_exp</tt> confirmation method in all access tokens issued to this client. Defaults to <tt>false</tt>.</t>
+</dd>
 </dl>
 <t>The authorization server MAY also apply session binding based on:</t>
 
-<ul spacing="compact">
-<li>Token exchange policy: When the <tt>subject_token</tt> or <tt>actor_token</tt> in an RFC 8693 exchange is itself session-bound, the resulting token SHOULD also be session-bound to maintain the security property across the delegation chain.</li>
-<li>Resource server requirements: When a resource server's metadata indicates that it requires session-bound tokens.</li>
-<li>Risk-based policy: When the requested scope, audience, or delegation depth exceeds a policy threshold.</li>
+<ul>
+<li><t>Token exchange policy: When the <tt>subject_token</tt> or <tt>actor_token</tt> in an RFC 8693 exchange is itself session-bound, the resulting token SHOULD also be session-bound to maintain the security property across the delegation chain.</t>
+</li>
+<li><t>Resource server requirements: When a resource server's metadata indicates that it requires session-bound tokens.</t>
+</li>
+<li><t>Risk-based policy: When the requested scope, audience, or delegation depth exceeds a policy threshold.</t>
+</li>
 </ul>
 </section>
 
 <section anchor="resource-access-with-session-binding-proof"><name>Resource Access with Session-Binding Proof</name>
 <t>The following diagram illustrates the complete flow:</t>
 
-<artwork><![CDATA[ Client (with cert C)                          Resource Server
+<artwork> Client (with cert C)                          Resource Server
    |                                                    |
-   |=== mTLS handshake (client cert C) =================>|
+   |=== mTLS handshake (client cert C) =================&gt;|
    |                                                    |
    |  [ONCE PER CONNECTION]                              |
    |  Both sides derive:                                |
    |    EKM = TLS-Exporter(                             |
-   |      "EXPORTER-oauth-tls-session-bound",            |
-   |      "", 32)                                       |
+   |      &quot;EXPORTER-oauth-tls-session-bound&quot;,            |
+   |      &quot;&quot;, 32)                                       |
    |                                                    |
    |  [ONCE PER (TOKEN, CONNECTION)]                     |
    |  Client constructs proof JWT:                      |
@@ -229,13 +267,13 @@
    |    payload = {                                     |
    |      ath: SHA256(access_token),                    |
    |      ekm: EKM,                                    |
-   |      iat: <unix_timestamp>                         |
+   |      iat: &lt;unix_timestamp&gt;                         |
    |    }                                               |
    |    sig = Sign(C.privateKey, header || payload)     |
    |                                                    |
-   |--- HTTP Request 1 -------------------------------->|
-   |    Authorization: Bearer <access_token>            |
-   |    Session-Binding-Proof: <proof_jwt>              |
+   |--- HTTP Request 1 --------------------------------&gt;|
+   |    Authorization: Bearer &lt;access_token&gt;            |
+   |    Session-Binding-Proof: &lt;proof_jwt&gt;              |
    |                                                    |
    |  Server verifies:                                  |
    |    1. sig matches C.publicKey from mTLS            |
@@ -244,27 +282,31 @@
    |    4. iat within acceptable window                  |
    |    (caches: this token is bound to this conn)       |
    |                                                    |
-   |<-- 200 OK ----------------------------------------|
+   |&lt;-- 200 OK ----------------------------------------|
    |                                                    |
-   |--- HTTP Request 2 (same token, same proof) ------->|
-   |    Authorization: Bearer <access_token>            |
-   |    Session-Binding-Proof: <proof_jwt>  (reused)    |
+   |--- HTTP Request 2 (same token, same proof) -------&gt;|
+   |    Authorization: Bearer &lt;access_token&gt;            |
+   |    Session-Binding-Proof: &lt;proof_jwt&gt;  (reused)    |
    |                                                    |
    |  Server verifies (per request):                    |
    |    - looks up (conn_id, ath) in cache              |
    |    - cache hit: binding verified for THIS conn     |
    |                                                    |
-   |<-- 200 OK ----------------------------------------|
-]]></artwork>
+   |&lt;-- 200 OK ----------------------------------------|
+</artwork>
 
 <section anchor="performance-characteristics"><name>Performance Characteristics</name>
 <t>Because the Session-Binding Proof contains only connection-level claims (<tt>ekm</tt>, <tt>ath</tt>, <tt>iat</tt>), the client constructs and signs the proof <strong>once per (token, connection) pair</strong> and reuses it for all subsequent requests on that connection. The <tt>iat</tt> value reflects the time of proof construction, not the time of any particular request. This provides a significant advantage over DPoP:</t>
 
-<ul spacing="compact">
-<li><strong>Proof construction (client-side)</strong>: One JWT signature per connection per token. DPoP requires one JWT signature per request.</li>
-<li><strong>Proof verification (server-side)</strong>: Full JWT verification on first presentation; the server MAY cache the verified <tt>(connection, ath)</tt> binding and reduce subsequent verifications to a cache lookup. DPoP requires full JWT verification per request.</li>
-<li><strong>TLS Exporter derivation</strong>: Once per connection, cached by both sides.</li>
-<li><strong>No separate key management</strong>: Unlike DPoP, which requires generating, storing, and rotating an ephemeral key pair independent of TLS, this specification reuses the mTLS key pair. This eliminates an entire key lifecycle from the implementation.</li>
+<ul>
+<li><t><strong>Proof construction (client-side)</strong>: One JWT signature per connection per token. DPoP requires one JWT signature per request.</t>
+</li>
+<li><t><strong>Proof verification (server-side)</strong>: Full JWT verification on first presentation; the server MAY cache the verified <tt>(connection, ath)</tt> binding and reduce subsequent verifications to a cache lookup. DPoP requires full JWT verification per request.</t>
+</li>
+<li><t><strong>TLS Exporter derivation</strong>: Once per connection, cached by both sides.</t>
+</li>
+<li><t><strong>No separate key management</strong>: Unlike DPoP, which requires generating, storing, and rotating an ephemeral key pair independent of TLS, this specification reuses the mTLS key pair. This eliminates an entire key lifecycle from the implementation.</t>
+</li>
 </ul>
 <t>When OPTIONAL per-request claims (<tt>jti</tt>, <tt>htm</tt>, <tt>htu</tt>) are included, the proof must be constructed per request (similar to DPoP). Deployments choose between per-connection efficiency and per-request intra-session hardening based on their threat model.</t>
 <t>This amortization benefit assumes that mTLS connections are <strong>long-lived</strong> relative to the number of requests. If a deployment creates a new mTLS connection for every HTTP request-response cycle, the proof must be constructed on every request and the per-request cost becomes equivalent to DPoP. Deployments SHOULD use persistent connections (e.g., HTTP/2 or HTTP/1.1 with keep-alive) so that a single mTLS connection carries many requests. This is already standard practice in service mesh and workload-to-workload environments where mTLS is terminated at a sidecar or gateway.</t>
@@ -277,14 +319,19 @@
 <t>When the client presents the access token to a resource server:</t>
 
 <ol>
-<li>The client establishes an mTLS connection with the resource server.</li>
-<li>The client derives the TLS Exporter value for the current connection (computed once and cached).</li>
-<li>The client constructs a Session-Binding Proof JWT as specified in <xref target="session-binding-proof-format"></xref>. If the proof does not contain per-request claims, the client MAY reuse the same proof for all subsequent requests using this token on this connection.</li>
+<li><t>The client establishes an mTLS connection with the resource server.</t>
+</li>
+<li><t>The client derives the TLS Exporter value for the current connection (computed once and cached).</t>
+</li>
+<li><t>The client constructs a Session-Binding Proof JWT as specified in <xref target="session-binding-proof-format"></xref>. If the proof does not contain per-request claims, the client MAY reuse the same proof for all subsequent requests using this token on this connection.</t>
+</li>
 <li><t>The client sends the HTTP request with:</t>
 
-<ul spacing="compact">
-<li>The access token in the <tt>Authorization</tt> header: <tt>Authorization: Bearer &lt;access_token&gt;</tt></li>
-<li>The Session-Binding Proof in the <tt>Session-Binding-Proof</tt> header: <tt>Session-Binding-Proof: &lt;proof_jwt&gt;</tt></li>
+<ul>
+<li><t>The access token in the <tt>Authorization</tt> header: <tt>Authorization: Bearer &lt;access_token&gt;</tt></t>
+</li>
+<li><t>The Session-Binding Proof in the <tt>Session-Binding-Proof</tt> header: <tt>Session-Binding-Proof: &lt;proof_jwt&gt;</tt></t>
+</li>
 </ul></li>
 <li><t>The resource server performs the following verifications:</t>
 <t>a.  <strong>Standard mTLS verification</strong>: Verifies the client certificate as part of the TLS handshake.
@@ -312,21 +359,23 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <tt>htm</tt> an
 <section anchor="error-responses"><name>Error Responses</name>
 <t>When verification of the Session-Binding Proof fails or the proof is missing, the resource server MUST respond with HTTP 401 and include a <tt>WWW-Authenticate</tt> header with the appropriate error code:</t>
 
-<artwork><![CDATA[WWW-Authenticate: Bearer error="invalid_proof",
-  error_description="Session-Binding Proof verification failed: 
-    exporter mismatch"
-]]></artwork>
+<artwork>WWW-Authenticate: Bearer error=&quot;invalid_proof&quot;,
+  error_description=&quot;Session-Binding Proof verification failed: 
+    exporter mismatch&quot;
+</artwork>
 
-<artwork><![CDATA[WWW-Authenticate: Bearer error="use_session_binding",
-  error_description="This token requires a Session-Binding Proof"
-]]></artwork>
+<artwork>WWW-Authenticate: Bearer error=&quot;use_session_binding&quot;,
+  error_description=&quot;This token requires a Session-Binding Proof&quot;
+</artwork>
 <t>The following error code values are defined:</t>
 
-<dl spacing="compact">
+<dl>
 <dt>invalid_proof:</dt>
-<dd>The Session-Binding Proof is malformed or failed verification. This includes signature verification failure, exporter mismatch, stale <tt>iat</tt>, <tt>jti</tt> reuse, <tt>ath</tt> mismatch, and <tt>htm</tt>/<tt>htu</tt> mismatch.</dd>
-<dt>use_session_binding:</dt>
-<dd>The access token requires a Session-Binding Proof (the <tt>cnf.tls_exp</tt> claim is present) but no <tt>Session-Binding-Proof</tt> header was provided. This error signals to the client that it must construct and present a proof.</dd>
+<dd><t>The Session-Binding Proof is malformed or failed verification. This includes signature verification failure, exporter mismatch, stale <tt>iat</tt>, <tt>jti</tt> reuse, <tt>ath</tt> mismatch, and <tt>htm</tt>/<tt>htu</tt> mismatch.</t>
+</dd>
+<dt>use<em>session</em>binding:</dt>
+<dd><t>The access token requires a Session-Binding Proof (the <tt>cnf.tls_exp</tt> claim is present) but no <tt>Session-Binding-Proof</tt> header was provided. This error signals to the client that it must construct and present a proof.</t>
+</dd>
 </dl>
 <t>The resource server SHOULD include an <tt>error_description</tt> parameter with a human-readable explanation of the specific verification failure.</t>
 </section>
@@ -356,13 +405,31 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <tt>htm</tt> an
 <t>In summary, for mTLS-capable environments, this specification provides stronger security (connection-level binding vs. key-level binding), lower per-request cost (amortized proof vs. per-request proof), simpler implementation (no separate key management), and — when backed by a workload identity system — proof whose binding key has verifiable provenance through an attestation chain.</t>
 </section>
 
+<section anchor="relationship-to-token-binding-rfc-8471-8473"><name>Relationship to Token Binding (RFC 8471-8473)</name>
+<t>Token Binding <xref target="RFC8471"></xref><xref target="RFC8472"></xref><xref target="RFC8473"></xref> proposed direct TLS session binding for OAuth and HTTP but did not gain traction in industry. This specification addresses the same core problem — preventing cross-connection token replay — while avoiding the specific deployment barriers that Token Binding encountered.</t>
+
+<ul>
+<li><t><strong>No new TLS extension.</strong> Token Binding required a dedicated TLS negotiation extension (<xref target="RFC8472"></xref>) that had to be implemented and enabled by browser vendors and TLS stacks. This specification uses the TLS Exporter mechanism (<xref target="RFC5705"></xref>, <xref target="RFC8446"></xref> Section 7.5), which is already available in every compliant TLS 1.2, TLS 1.3, and QUIC implementation without any extension or negotiation.</t>
+</li>
+<li><t><strong>Session-scoped binding, not persistent client keys.</strong> Token Binding associated tokens with long-lived, client-managed signing keys, creating persistent client identifiers across connections. This specification binds tokens to the TLS Exporter value, which is unique to each connection and exists only for the lifetime of that session. No persistent identifier is created beyond the TLS session itself.</t>
+</li>
+<li><t><strong>Specified for Token Exchange.</strong> Token Binding was not defined for use with RFC 8693 Token Exchange delegation chains. This specification is primarily motivated by exactly that scenario: each hop in a multi-hop agentic delegation chain produces a new bearer token, and session binding contains the blast radius of any single compromise to the specific connection on which that token is presented.</t>
+</li>
+<li><t><strong>Explicit deployment scope constraint.</strong> Token Binding encountered complexity in proxy and intermediary topologies, leading to additional specifications (<xref target="RFC8473"></xref>) to handle referred binding over HTTP. This specification avoids that complexity by explicitly restricting the binding guarantee to deployments where the verifier is a direct endpoint of the client TLS connection — either the resource server itself or a co-located sidecar. Forwarding the EKM through a remote intermediary would change the security property from session binding to proxy-attested binding, which is a categorically weaker guarantee. See <xref target="deployment-scope"></xref> for details.</t>
+</li>
+</ul>
+<t>This specification is not applicable to browser-based web clients, as browsers do not currently expose TLS Exporter values to JavaScript. It is targeted at server-to-server, service-mesh, and agentic AI workloads where both endpoints have direct access to the TLS stack.</t>
+</section>
+
 <section anchor="relationship-to-wimse-wit-wpt"><name>Relationship to WIMSE WIT/WPT</name>
 <t>The WIMSE Workload Identity Token (WIT) and Workload Proof Token (WPT) defined in <xref target="I-D.ietf-wimse-s2s-protocol"></xref> provide a proof-of-possession mechanism for workload-to-workload communication. This specification is compatible with WIMSE and addresses a complementary problem.</t>
 <t>WIT/WPT and this specification operate at different layers and answer different questions:</t>
 
-<ul spacing="compact">
-<li><strong>WIMSE WIT/WPT</strong>: &quot;Is this workload who it claims to be, and does it currently hold the private key corresponding to its identity?&quot; (application-layer identity assertion and per-request proof of possession)</li>
-<li><strong>This specification</strong>: &quot;Is this OAuth access token being presented on the TLS connection that this workload authenticated?&quot; (TLS-channel-level token binding scoped to a specific connection)</li>
+<ul>
+<li><t><strong>WIMSE WIT/WPT</strong>: &quot;Is this workload who it claims to be, and does it currently hold the private key corresponding to its identity?&quot; (application-layer identity assertion and per-request proof of possession)</t>
+</li>
+<li><t><strong>This specification</strong>: &quot;Is this OAuth access token being presented on the TLS connection that this workload authenticated?&quot; (TLS-channel-level token binding scoped to a specific connection)</t>
+</li>
 </ul>
 <t>Neither mechanism alone provides both properties. In a workload-to-workload flow where both are deployed, WIT/WPT establishes and proves the workload's identity at the application layer while this specification ensures the OAuth authorization token is cryptographically bound to the specific connection that workload established. Together they close the complete chain: from attested workload identity to authorized, connection-scoped API access.</t>
 <t>WPT is a per-request application-layer proof; this specification amortizes the proof to once per (token, connection) pair at the TLS-channel layer. The two mechanisms are not competing alternatives — deployments that require both workload identity proof and connection-level token binding SHOULD use both.</t>
@@ -377,37 +444,39 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <tt>htm</tt> an
 </section>
 </section>
 
-<section anchor="tls-proxy-considerations"><name>TLS Proxy Considerations</name>
+<section anchor="deployment-scope"><name>Deployment Scope</name>
 
-<section anchor="pass-through-mtls"><name>Pass-Through mTLS</name>
-<t>In deployments where TLS is terminated at the application server (pass-through mode), this specification works without modification. Both the client and server have direct access to the TLS Exporter value.</t>
+<section anchor="co-located-tls-termination-supported"><name>Co-Located TLS Termination (Supported)</name>
+<t>This specification requires that the entity verifying the Session-Binding Proof be an endpoint of the TLS connection on which the token is presented, or a sidecar co-located at the same trust boundary as the resource server that terminates that connection directly. In both cases, the verifier derives the EKM from the TLS session it directly participates in, and no EKM forwarding is required.</t>
+<t>This covers two deployment models:</t>
+
+<ul>
+<li><t><strong>Pass-through mTLS</strong>: TLS is terminated at the application server itself. Both the client and resource server derive the EKM directly from the same connection.</t>
+</li>
+<li><t><strong>Co-located sidecar</strong>: TLS is terminated at a sidecar (e.g., Envoy) running in the same pod or VM as the resource server. The sidecar derives the EKM directly and verifies the proof before passing the request to the application. This is the recommended deployment model for agentic AI environments. See <xref target="appendix-sidecar"></xref>.</t>
+</li>
+</ul>
 </section>
 
-<section anchor="tls-termination-at-proxy"><name>TLS Termination at Proxy</name>
-<t>When a TLS-terminating proxy (e.g., a load balancer or API gateway) sits between the client and the resource server, the proxy MUST forward the following information to the backend:</t>
-
-<ol spacing="compact">
-<li>The client certificate or its thumbprint, as specified in <xref target="RFC9440"></xref>.</li>
-<li>The TLS Exporter value derived from the client-to-proxy mTLS session.</li>
-</ol>
-<t>A new HTTP header is defined for conveying the exporter value:</t>
-
-<artwork><![CDATA[TLS-Exporter: <base64url-encoded exporter value>
-]]></artwork>
-<t>The proxy MUST derive the exporter using the label and parameters specified in <xref target="tls-exporter-derivation"></xref> from the client-facing TLS session, and forward it in this header over a trusted, integrity-protected connection to the backend.</t>
-<t>The backend resource server MUST use the forwarded exporter value (instead of its own locally-derived value) when verifying the Session-Binding Proof.</t>
-<t><strong>Security Warning:</strong> The <tt>TLS-Exporter</tt> header contains security-sensitive material. The connection between the proxy and backend MUST be integrity-protected (e.g., via a separate mTLS connection or a trusted network). The backend MUST NOT accept this header from untrusted sources.</t>
+<section anchor="remote-tls-termination-out-of-scope"><name>Remote TLS Termination (Out of Scope)</name>
+<t>Deployments where TLS is terminated at a remote intermediary — such as a standalone load balancer or API gateway that is not co-located with the resource server — are outside the scope of this specification.</t>
+<t>In such topologies, the EKM cannot be conveyed to the verifier without introducing a trust dependency on the intermediary's assertion of what the EKM was. This changes the security property from &quot;bound to the TLS session&quot; to &quot;bound to what a proxy claims the TLS session's EKM was&quot; — a weaker and categorically different guarantee that undermines the core security claim of this specification. Allowing EKM to escape the session boundary via an HTTP header would recreate the kind of mediated-trust complexity that contributed to TLS Token Binding's adoption failures <xref target="RFC8471"></xref><xref target="RFC8472"></xref><xref target="RFC8473"></xref>.</t>
+<t>Deployments requiring TLS-terminating intermediaries SHOULD place the TLS termination point and the Session-Binding Proof verifier within the same trust boundary — for example, by running an Envoy-based sidecar as both the TLS endpoint and the proof verifier, co-located with the resource server backend.</t>
 </section>
 
 <section anchor="quic-and-http-3"><name>QUIC and HTTP/3</name>
 <t>This specification is directly applicable to QUIC (<xref target="RFC9000"></xref>) and HTTP/3 transports. QUIC integrates TLS 1.3 into its handshake (<xref target="RFC9001"></xref>), and TLS Exporter values are available for use with QUIC connections as specified in Section 4.2 of <xref target="RFC9001"></xref>.</t>
 <t>The following considerations apply when using this specification over QUIC:</t>
 
-<ul spacing="compact">
-<li><strong>Exporter derivation</strong>: The TLS Exporter MUST be derived using the 1-RTT exporter keys (post-handshake). Proofs MUST NOT be constructed using 0-RTT exporter values, as these are derived from pre-shared keys and provide weaker binding guarantees.</li>
-<li><strong>Connection migration</strong>: QUIC connections may migrate across network paths (different IP addresses and ports) without a new TLS handshake. The TLS state — and therefore the EKM — persists across migrations. Session-Binding Proofs remain valid after connection migration.</li>
-<li><strong>Client authentication</strong>: In TLS 1.3 over QUIC, post-handshake client authentication is not supported (Section 4.4 of <xref target="RFC9001"></xref>). Client certificates MUST be presented during the initial handshake. This simplifies the binding model: the client identity is fixed at connection establishment.</li>
-<li><strong>Long-lived connections</strong>: QUIC connections are designed to be long-lived and resilient to network changes, aligning naturally with the long-lived connection guidance in <xref target="performance-characteristics"></xref>.</li>
+<ul>
+<li><t><strong>Exporter derivation</strong>: The TLS Exporter MUST be derived using the 1-RTT exporter keys (post-handshake). Proofs MUST NOT be constructed using 0-RTT exporter values, as these are derived from pre-shared keys and provide weaker binding guarantees.</t>
+</li>
+<li><t><strong>Connection migration</strong>: QUIC connections may migrate across network paths (different IP addresses and ports) without a new TLS handshake. The TLS state — and therefore the EKM — persists across migrations. Session-Binding Proofs remain valid after connection migration.</t>
+</li>
+<li><t><strong>Client authentication</strong>: In TLS 1.3 over QUIC, post-handshake client authentication is not supported (Section 4.4 of <xref target="RFC9001"></xref>). Client certificates MUST be presented during the initial handshake. This simplifies the binding model: the client identity is fixed at connection establishment.</t>
+</li>
+<li><t><strong>Long-lived connections</strong>: QUIC connections are designed to be long-lived and resilient to network changes, aligning naturally with the long-lived connection guidance in <xref target="performance-characteristics"></xref>.</t>
+</li>
 </ul>
 </section>
 </section>
@@ -420,46 +489,61 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <tt>htm</tt> an
 
 <section anchor="t1-cross-connection-token-replay"><name>T1: Cross-Connection Token Replay</name>
 
-<ul spacing="compact">
-<li><strong>Threat</strong>: An attacker intercepts a bearer token and presents it on a different TLS connection.</li>
-<li><strong>Mitigation</strong>: The <tt>ekm</tt> claim in the proof is derived from the TLS handshake transcript and is unique per connection. The resource server compares it against its own locally-derived EKM. A replayed proof will fail the EKM comparison.</li>
-<li><strong>DPoP equivalent</strong>: No. DPoP binds to an application-layer key, not to the TLS connection. If the DPoP key is also exfiltrated, replay succeeds.</li>
+<ul>
+<li><t><strong>Threat</strong>: An attacker intercepts a bearer token and presents it on a different TLS connection.</t>
+</li>
+<li><t><strong>Mitigation</strong>: The <tt>ekm</tt> claim in the proof is derived from the TLS handshake transcript and is unique per connection. The resource server compares it against its own locally-derived EKM. A replayed proof will fail the EKM comparison.</t>
+</li>
+<li><t><strong>DPoP equivalent</strong>: No. DPoP binds to an application-layer key, not to the TLS connection. If the DPoP key is also exfiltrated, replay succeeds.</t>
+</li>
 </ul>
 </section>
 
 <section anchor="t2-cross-host-token-replay"><name>T2: Cross-Host Token Replay</name>
 
-<ul spacing="compact">
-<li><strong>Threat</strong>: An attacker on a different host obtains a bearer token and attempts to use it.</li>
-<li><strong>Mitigation</strong>: The proof is signed with the client's mTLS private key. The resource server verifies the signature against the public key from the current mTLS handshake. A different host presents a different certificate, so signature verification fails.</li>
-<li><strong>DPoP equivalent</strong>: Partial. DPoP binds to an ephemeral key, which may not be hardware-protected.</li>
+<ul>
+<li><t><strong>Threat</strong>: An attacker on a different host obtains a bearer token and attempts to use it.</t>
+</li>
+<li><t><strong>Mitigation</strong>: The proof is signed with the client's mTLS private key. The resource server verifies the signature against the public key from the current mTLS handshake. A different host presents a different certificate, so signature verification fails.</t>
+</li>
+<li><t><strong>DPoP equivalent</strong>: Partial. DPoP binds to an ephemeral key, which may not be hardware-protected.</t>
+</li>
 </ul>
 </section>
 
 <section anchor="t3-token-exfiltration-via-llm-prompt-injection"><name>T3: Token Exfiltration via LLM Prompt Injection</name>
 
-<ul spacing="compact">
-<li><strong>Threat</strong>: A compromised or prompt-injected AI agent exfiltrates a bearer token via tool calls, side channels, or log leakage.</li>
-<li><strong>Mitigation</strong>: The attacker obtains the token but cannot produce a valid proof. When deployed with a security sidecar (see <xref target="appendix-sidecar"></xref>), the mTLS private key resides in a separate process inaccessible to the agent's LLM runtime. When deployed without a sidecar (direct integration, see <xref target="appendix-spiffe"></xref>), the private key resides in the same process as the agent; key isolation in this variant depends on platform-level controls such as hardware-backed key storage. In both cases, even if the attacker also obtains the proof, the EKM will not match on a different connection.</li>
-<li><strong>DPoP equivalent</strong>: No. DPoP keys are application-layer and typically reside in the same process as the agent, making co-exfiltration with the token likely.</li>
+<ul>
+<li><t><strong>Threat</strong>: A compromised or prompt-injected AI agent exfiltrates a bearer token via tool calls, side channels, or log leakage.</t>
+</li>
+<li><t><strong>Mitigation</strong>: The attacker obtains the token but cannot produce a valid proof. When deployed with a security sidecar (see <xref target="appendix-sidecar"></xref>), the mTLS private key resides in a separate process inaccessible to the agent's LLM runtime. When deployed without a sidecar (direct integration, see <xref target="appendix-spiffe"></xref>), the private key resides in the same process as the agent; key isolation in this variant depends on platform-level controls such as hardware-backed key storage. In both cases, even if the attacker also obtains the proof, the EKM will not match on a different connection.</t>
+</li>
+<li><t><strong>DPoP equivalent</strong>: No. DPoP keys are application-layer and typically reside in the same process as the agent, making co-exfiltration with the token likely.</t>
+</li>
 </ul>
 </section>
 
 <section anchor="t4-token-proof-exfiltration-both-stolen"><name>T4: Token + Proof Exfiltration (Both Stolen)</name>
 
-<ul spacing="compact">
-<li><strong>Threat</strong>: An attacker obtains both the access token and the Session-Binding Proof, and attempts to use them on their own mTLS connection to the same resource server.</li>
-<li><strong>Mitigation</strong>: Two independent protections apply: (1) the attacker's mTLS certificate differs from the original client's, so the proof signature does not match the public key from the attacker's handshake — the resource server verifies the proof against the certificate presented on <em>this</em> connection; (2) even if the attacker somehow presents the same certificate, a different TLS connection produces a different EKM, so the <tt>ekm</tt> claim does not match the server's locally-derived value.</li>
-<li><strong>DPoP equivalent</strong>: No. If both the DPoP proof and the DPoP key are exfiltrated, the attacker can replay from any connection.</li>
+<ul>
+<li><t><strong>Threat</strong>: An attacker obtains both the access token and the Session-Binding Proof, and attempts to use them on their own mTLS connection to the same resource server.</t>
+</li>
+<li><t><strong>Mitigation</strong>: Two independent protections apply: (1) the attacker's mTLS certificate differs from the original client's, so the proof signature does not match the public key from the attacker's handshake — the resource server verifies the proof against the certificate presented on <em>this</em> connection; (2) even if the attacker somehow presents the same certificate, a different TLS connection produces a different EKM, so the <tt>ekm</tt> claim does not match the server's locally-derived value.</t>
+</li>
+<li><t><strong>DPoP equivalent</strong>: No. If both the DPoP proof and the DPoP key are exfiltrated, the attacker can replay from any connection.</t>
+</li>
 </ul>
 </section>
 
 <section anchor="t5-multi-hop-delegation-chain-compromise"><name>T5: Multi-Hop Delegation Chain Compromise</name>
 
-<ul spacing="compact">
-<li><strong>Threat</strong>: A token is stolen at one hop in a delegation chain (A→B→C→D) and replayed at a different hop.</li>
-<li><strong>Mitigation</strong>: Each hop uses a distinct mTLS connection with a distinct EKM. A token bound to one hop's connection cannot be replayed on another.</li>
-<li><strong>DPoP equivalent</strong>: Partial. DPoP binds per key, but the key is not inherently tied to a specific hop's connection.</li>
+<ul>
+<li><t><strong>Threat</strong>: A token is stolen at one hop in a delegation chain (A→B→C→D) and replayed at a different hop.</t>
+</li>
+<li><t><strong>Mitigation</strong>: Each hop uses a distinct mTLS connection with a distinct EKM. A token bound to one hop's connection cannot be replayed on another.</t>
+</li>
+<li><t><strong>DPoP equivalent</strong>: Partial. DPoP binds per key, but the key is not inherently tied to a specific hop's connection.</t>
+</li>
 </ul>
 </section>
 </section>
@@ -469,10 +553,13 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <tt>htm</tt> an
 <section anchor="intra-connection-replay"><name>Intra-Connection Replay</name>
 <t>Within the same TLS connection, an attacker with access to the channel (e.g., a compromised middleware component) could observe and replay requests. This risk is mitigated by including the OPTIONAL per-request claims:</t>
 
-<ul spacing="compact">
-<li>The <tt>jti</tt> claim, which provides per-proof uniqueness when the server maintains a replay cache.</li>
-<li>The <tt>htm</tt> and <tt>htu</tt> claims, which bind the proof to a specific HTTP method and URI.</li>
-<li>Short <tt>iat</tt> validity windows that limit the temporal scope of any replay.</li>
+<ul>
+<li><t>The <tt>jti</tt> claim, which provides per-proof uniqueness when the server maintains a replay cache.</t>
+</li>
+<li><t>The <tt>htm</tt> and <tt>htu</tt> claims, which bind the proof to a specific HTTP method and URI.</t>
+</li>
+<li><t>Short <tt>iat</tt> validity windows that limit the temporal scope of any replay.</t>
+</li>
 </ul>
 <t>Deployments that require intra-connection replay protection SHOULD include per-request claims.</t>
 </section>
@@ -480,15 +567,14 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <tt>htm</tt> an
 <section anchor="compromised-private-key"><name>Compromised Private Key</name>
 <t>If the client's mTLS private key is compromised, the attacker can produce valid proofs. Mitigations include:</t>
 
-<ul spacing="compact">
-<li><strong>Hardware-backed key storage</strong>: Storing the private key in a TPM, HSM, or TEE prevents software-level exfiltration.</li>
-<li><strong>Short-lived certificates</strong>: Using short-lived credentials (e.g., SPIFFE SVIDs with hourly or shorter expiry) limits the window during which a compromised key can be exploited.</li>
-<li><strong>Transitive Attestation</strong>: <xref target="I-D.draft-mw-wimse-transitive-attestation"></xref> binds identity to a verified execution context, providing evidence if the execution environment is tampered with.</li>
+<ul>
+<li><t><strong>Hardware-backed key storage</strong>: Storing the private key in a TPM, HSM, or TEE prevents software-level exfiltration.</t>
+</li>
+<li><t><strong>Short-lived certificates</strong>: Using short-lived credentials (e.g., SPIFFE SVIDs with hourly or shorter expiry) limits the window during which a compromised key can be exploited.</t>
+</li>
+<li><t><strong>Transitive Attestation</strong>: <xref target="I-D.draft-mw-wimse-transitive-attestation"></xref> binds identity to a verified execution context, providing evidence if the execution environment is tampered with.</t>
+</li>
 </ul>
-</section>
-
-<section anchor="tls-proxy-trust"><name>TLS Proxy Trust</name>
-<t>The <tt>TLS-Exporter</tt> header introduces a trust dependency on the proxy. A compromised proxy could forge exporter values. Mitigations include mutual authentication between proxy and backend, and restricting the header to trusted network segments.</t>
 </section>
 </section>
 </section>
@@ -498,22 +584,30 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <tt>htm</tt> an
 <section anchor="oauth-token-confirmation-methods"><name>OAuth Token Confirmation Methods</name>
 <t>This specification registers the following confirmation method in the IANA &quot;OAuth Token Confirmation Methods&quot; registry established by <xref target="RFC7800"></xref>:</t>
 
-<ul spacing="compact">
-<li><strong>Confirmation Method Value</strong>: <tt>tls_exp</tt></li>
-<li><strong>Confirmation Method Description</strong>: TLS Exporter Session Binding</li>
-<li><strong>Change Controller</strong>: IETF</li>
-<li><strong>Reference</strong>: [this document]</li>
+<ul>
+<li><t><strong>Confirmation Method Value</strong>: <tt>tls_exp</tt></t>
+</li>
+<li><t><strong>Confirmation Method Description</strong>: TLS Exporter Session Binding</t>
+</li>
+<li><t><strong>Change Controller</strong>: IETF</t>
+</li>
+<li><t><strong>Reference</strong>: [this document]</t>
+</li>
 </ul>
 </section>
 
 <section anchor="oauth-dynamic-client-registration-metadata"><name>OAuth Dynamic Client Registration Metadata</name>
 <t>This specification registers the following client metadata value:</t>
 
-<ul spacing="compact">
-<li><strong>Client Metadata Name</strong>: <tt>tls_session_bound_access_tokens</tt></li>
-<li><strong>Client Metadata Description</strong>: Boolean indicating the client requires TLS-session-bound access tokens</li>
-<li><strong>Change Controller</strong>: IETF</li>
-<li><strong>Reference</strong>: [this document]</li>
+<ul>
+<li><t><strong>Client Metadata Name</strong>: <tt>tls_session_bound_access_tokens</tt></t>
+</li>
+<li><t><strong>Client Metadata Description</strong>: Boolean indicating the client requires TLS-session-bound access tokens</t>
+</li>
+<li><t><strong>Change Controller</strong>: IETF</t>
+</li>
+<li><t><strong>Reference</strong>: [this document]</t>
+</li>
 </ul>
 </section>
 
@@ -522,19 +616,13 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <tt>htm</tt> an
 
 <section anchor="session-binding-proof"><name>Session-Binding-Proof</name>
 
-<ul spacing="compact">
-<li><strong>Header Field Name</strong>: <tt>Session-Binding-Proof</tt></li>
-<li><strong>Status</strong>: permanent</li>
-<li><strong>Reference</strong>: [this document]</li>
-</ul>
-</section>
-
-<section anchor="tls-exporter"><name>TLS-Exporter</name>
-
-<ul spacing="compact">
-<li><strong>Header Field Name</strong>: <tt>TLS-Exporter</tt></li>
-<li><strong>Status</strong>: permanent</li>
-<li><strong>Reference</strong>: [this document]</li>
+<ul>
+<li><t><strong>Header Field Name</strong>: <tt>Session-Binding-Proof</tt></t>
+</li>
+<li><t><strong>Status</strong>: permanent</t>
+</li>
+<li><t><strong>Reference</strong>: [this document]</t>
+</li>
 </ul>
 </section>
 </section>
@@ -542,11 +630,15 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <tt>htm</tt> an
 <section anchor="tls-exporter-label"><name>TLS Exporter Label</name>
 <t>This specification registers the following TLS Exporter label in the IANA &quot;TLS Exporter Labels&quot; registry:</t>
 
-<ul spacing="compact">
-<li><strong>Value</strong>: <tt>EXPORTER-oauth-tls-session-bound</tt></li>
-<li><strong>DTLS-OK</strong>: N</li>
-<li><strong>Recommended</strong>: Y</li>
-<li><strong>Reference</strong>: [this document]</li>
+<ul>
+<li><t><strong>Value</strong>: <tt>EXPORTER-oauth-tls-session-bound</tt></t>
+</li>
+<li><t><strong>DTLS-OK</strong>: N</t>
+</li>
+<li><t><strong>Recommended</strong>: Y</t>
+</li>
+<li><t><strong>Reference</strong>: [this document]</t>
+</li>
 </ul>
 </section>
 </section>
@@ -554,50 +646,12 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <tt>htm</tt> an
 </middle>
 
 <back>
-<references><name>References</name>
 <references><name>Normative References</name>
-<reference anchor="RFC2119" target="https://www.rfc-editor.org/rfc/rfc2119">
-  <front>
-    <title>Key words for use in RFCs to Indicate Requirement Levels</title>
-    <author fullname="Scott Bradner" initials="S." surname="Bradner"></author>
-    <date year="1997" month="March"></date>
-  </front>
-</reference>
 <reference anchor="RFC5705" target="https://www.rfc-editor.org/rfc/rfc5705">
   <front>
     <title>Keying Material Exporters for Transport Layer Security (TLS)</title>
     <author fullname="Eric Rescorla" initials="E." surname="Rescorla"></author>
     <date year="2010" month="March"></date>
-  </front>
-</reference>
-<reference anchor="RFC7662" target="https://www.rfc-editor.org/rfc/rfc7662">
-  <front>
-    <title>OAuth 2.0 Token Introspection</title>
-    <author fullname="Justin Richer" initials="J." surname="Richer"></author>
-    <date year="2015" month="October"></date>
-  </front>
-</reference>
-<reference anchor="RFC7800" target="https://www.rfc-editor.org/rfc/rfc7800">
-  <front>
-    <title>Proof-of-Possession Key Semantics for JSON Web Tokens (JWTs)</title>
-    <author fullname="Michael B. Jones" initials="M." surname="Jones"></author>
-    <author fullname="John Bradley" initials="J." surname="Bradley"></author>
-    <author fullname="Hannes Tschofenig" initials="H." surname="Tschofenig"></author>
-    <date year="2016" month="April"></date>
-  </front>
-</reference>
-<reference anchor="RFC8174" target="https://www.rfc-editor.org/rfc/rfc8174">
-  <front>
-    <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
-    <author fullname="Barry Leiba" initials="B." surname="Leiba"></author>
-    <date year="2017" month="May"></date>
-  </front>
-</reference>
-<reference anchor="RFC8446" target="https://www.rfc-editor.org/rfc/rfc8446">
-  <front>
-    <title>The Transport Layer Security (TLS) Protocol Version 1.3</title>
-    <author fullname="Eric Rescorla" initials="E." surname="Rescorla"></author>
-    <date year="2018" month="August"></date>
   </front>
 </reference>
 <reference anchor="RFC8693" target="https://www.rfc-editor.org/rfc/rfc8693">
@@ -611,22 +665,27 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <tt>htm</tt> an
     <date year="2020" month="January"></date>
   </front>
 </reference>
-<reference anchor="RFC8705" target="https://www.rfc-editor.org/rfc/rfc8705">
+<reference anchor="RFC2119" target="https://www.rfc-editor.org/rfc/rfc2119">
   <front>
-    <title>OAuth 2.0 Mutual-TLS Client Authentication and Certificate-Bound Access Tokens</title>
-    <author fullname="Brian Campbell" initials="B." surname="Campbell"></author>
-    <author fullname="John Bradley" initials="J." surname="Bradley"></author>
-    <author fullname="Nat Sakimura" initials="N." surname="Sakimura"></author>
-    <author fullname="Torsten Lodderstedt" initials="T." surname="Lodderstedt"></author>
-    <date year="2020" month="February"></date>
+    <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+    <author fullname="Scott Bradner" initials="S." surname="Bradner"></author>
+    <date year="1997" month="March"></date>
   </front>
 </reference>
-<reference anchor="RFC9440" target="https://www.rfc-editor.org/rfc/rfc9440">
+<reference anchor="RFC7800" target="https://www.rfc-editor.org/rfc/rfc7800">
   <front>
-    <title>Client-Cert HTTP Header Field</title>
-    <author fullname="Brian Campbell" initials="B." surname="Campbell"></author>
-    <author fullname="Mike Bishop" initials="M." surname="Bishop"></author>
-    <date year="2023" month="July"></date>
+    <title>Proof-of-Possession Key Semantics for JSON Web Tokens (JWTs)</title>
+    <author fullname="Michael B. Jones" initials="M." surname="Jones"></author>
+    <author fullname="John Bradley" initials="J." surname="Bradley"></author>
+    <author fullname="Hannes Tschofenig" initials="H." surname="Tschofenig"></author>
+    <date year="2016" month="April"></date>
+  </front>
+</reference>
+<reference anchor="RFC7662" target="https://www.rfc-editor.org/rfc/rfc7662">
+  <front>
+    <title>OAuth 2.0 Token Introspection</title>
+    <author fullname="Justin Richer" initials="J." surname="Richer"></author>
+    <date year="2015" month="October"></date>
   </front>
 </reference>
 <reference anchor="RFC9449" target="https://www.rfc-editor.org/rfc/rfc9449">
@@ -641,13 +700,63 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <tt>htm</tt> an
     <date year="2023" month="September"></date>
   </front>
 </reference>
+<reference anchor="RFC8446" target="https://www.rfc-editor.org/rfc/rfc8446">
+  <front>
+    <title>The Transport Layer Security (TLS) Protocol Version 1.3</title>
+    <author fullname="Eric Rescorla" initials="E." surname="Rescorla"></author>
+    <date year="2018" month="August"></date>
+  </front>
+</reference>
+<reference anchor="RFC8174" target="https://www.rfc-editor.org/rfc/rfc8174">
+  <front>
+    <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+    <author fullname="Barry Leiba" initials="B." surname="Leiba"></author>
+    <date year="2017" month="May"></date>
+  </front>
+</reference>
+<reference anchor="RFC8705" target="https://www.rfc-editor.org/rfc/rfc8705">
+  <front>
+    <title>OAuth 2.0 Mutual-TLS Client Authentication and Certificate-Bound Access Tokens</title>
+    <author fullname="Brian Campbell" initials="B." surname="Campbell"></author>
+    <author fullname="John Bradley" initials="J." surname="Bradley"></author>
+    <author fullname="Nat Sakimura" initials="N." surname="Sakimura"></author>
+    <author fullname="Torsten Lodderstedt" initials="T." surname="Lodderstedt"></author>
+    <date year="2020" month="February"></date>
+  </front>
+</reference>
 </references>
 <references><name>Informative References</name>
+<reference anchor="I-D.ietf-wimse-s2s-protocol" target="https://datatracker.ietf.org/doc/html/draft-ietf-wimse-s2s-protocol">
+  <front>
+    <title>WIMSE Service to Service Authentication</title>
+    <author fullname="Pieter Howard" initials="P." surname="Howard"></author>
+    <date year="2024" month="October" day="21"></date>
+  </front>
+</reference>
 <reference anchor="I-D.draft-mw-wimse-transitive-attestation" target="https://datatracker.ietf.org/doc/html/draft-mw-wimse-transitive-attestation">
   <front>
     <title>Transitive Attestation for Sovereign Workloads: A WIMSE Profile</title>
     <author fullname="Ram Krishnan" initials="R." surname="Krishnan"></author>
     <date year="2026" month="March"></date>
+  </front>
+</reference>
+<reference anchor="RFC8473" target="https://www.rfc-editor.org/rfc/rfc8473">
+  <front>
+    <title>Token Binding over HTTP</title>
+    <author fullname="Andrei Popov" initials="A." surname="Popov"></author>
+    <author fullname="Magnus Nystrom" initials="M." surname="Nystrom"></author>
+    <author fullname="Dirk Balfanz" initials="D." surname="Balfanz"></author>
+    <author fullname="Nick Harper" initials="N." surname="Harper"></author>
+    <author fullname="Jeff Hodges" initials="J." surname="Hodges"></author>
+    <date year="2018" month="October"></date>
+  </front>
+</reference>
+<reference anchor="RFC9001" target="https://www.rfc-editor.org/rfc/rfc9001">
+  <front>
+    <title>Using TLS to Secure QUIC</title>
+    <author fullname="Martin Thomson" initials="M." surname="Thomson"></author>
+    <author fullname="Sean Turner" initials="S." surname="Turner"></author>
+    <date year="2021" month="May"></date>
   </front>
 </reference>
 <reference anchor="I-D.ietf-oauth-security-topics" target="https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics">
@@ -660,11 +769,13 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <tt>htm</tt> an
     <date year="2025" month="April"></date>
   </front>
 </reference>
-<reference anchor="I-D.ietf-wimse-s2s-protocol" target="https://datatracker.ietf.org/doc/html/draft-ietf-wimse-s2s-protocol">
+<reference anchor="RFC8472" target="https://www.rfc-editor.org/rfc/rfc8472">
   <front>
-    <title>WIMSE Service to Service Authentication</title>
-    <author fullname="Pieter Howard" initials="P." surname="Howard"></author>
-    <date year="2024" month="October" day="21"></date>
+    <title>Transport Layer Security (TLS) Extension for Token Binding Protocol Negotiation</title>
+    <author fullname="Andrei Popov" initials="A." surname="Popov"></author>
+    <author fullname="Magnus Nystrom" initials="M." surname="Nystrom"></author>
+    <author fullname="Dirk Balfanz" initials="D." surname="Balfanz"></author>
+    <date year="2018" month="October"></date>
   </front>
 </reference>
 <reference anchor="RFC9000" target="https://www.rfc-editor.org/rfc/rfc9000">
@@ -675,15 +786,16 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <tt>htm</tt> an
     <date year="2021" month="May"></date>
   </front>
 </reference>
-<reference anchor="RFC9001" target="https://www.rfc-editor.org/rfc/rfc9001">
+<reference anchor="RFC8471" target="https://www.rfc-editor.org/rfc/rfc8471">
   <front>
-    <title>Using TLS to Secure QUIC</title>
-    <author fullname="Martin Thomson" initials="M." surname="Thomson"></author>
-    <author fullname="Sean Turner" initials="S." surname="Turner"></author>
-    <date year="2021" month="May"></date>
+    <title>The Token Binding Protocol Version 1.0</title>
+    <author fullname="Andrei Popov" initials="A." surname="Popov"></author>
+    <author fullname="Magnus Nystrom" initials="M." surname="Nystrom"></author>
+    <author fullname="Dirk Balfanz" initials="D." surname="Balfanz"></author>
+    <author fullname="Jeff Hodges" initials="J." surname="Hodges"></author>
+    <date year="2018" month="October"></date>
   </front>
 </reference>
-</references>
 </references>
 
 <section anchor="contributors"><name>Contributors</name>
@@ -705,7 +817,7 @@ Email: jonian.musa@chase.com</t>
 <section anchor="architecture"><name>Architecture</name>
 <t>The following diagram shows the deployment layout. The AI agent and security sidecar run in the same pod or VM. The sidecar holds the mTLS private key, manages all authenticated outbound connections, and maintains a cache of signed proofs. A single mTLS connection to a remote resource server may carry requests on behalf of many different users, each with a distinct access token; the sidecar constructs and signs a proof once per (token, connection) pair and reuses it for subsequent requests with the same token.</t>
 
-<artwork><![CDATA[ +----------------------------------------------------+
+<artwork> +----------------------------------------------------+
  |  Pod / VM                                          |
  |                                                    |
  |  +------------------+     +-------------------+    |
@@ -724,34 +836,34 @@ Email: jonian.musa@chase.com</t>
  |  +--------+---------+     +--------+----------+    |
  |           |  plaintext HTTP         |               |
  |           |  (loopback/UDS)         |  mTLS         |
- |           +---------->-------------+|               |
+ |           +----------&gt;-------------+|               |
  |                                     |               |
  +-------------------------------------+---------------+
                                        |
                                        v
                               Remote Resource Server
-]]></artwork>
+</artwork>
 </section>
 
 <section anchor="request-flow"><name>Request Flow</name>
 <t>The following diagram shows how requests flow from the AI agent through the sidecar to the remote resource server. The sidecar transparently adds the Session-Binding Proof and reuses it for subsequent requests with the same token.</t>
 
-<artwork><![CDATA[ AI Agent            Security Sidecar          Resource Server
+<artwork> AI Agent            Security Sidecar          Resource Server
     |                       |                         |
-    |                       |=== mTLS handshake ======>|
+    |                       |=== mTLS handshake ======&gt;|
     |                       |                         |
     |                       |  [ONCE PER CONNECTION]   |
     |                       |  Both sides derive:     |
     |                       |    EKM = TLS-Exporter(  |
-    |                       |      "EXPORTER-oauth-   |
+    |                       |      &quot;EXPORTER-oauth-   |
     |                       |       tls-session-      |
-    |                       |       bound", "", 32)   |
+    |                       |       bound&quot;, &quot;&quot;, 32)   |
     |                       |                         |
     |  (1) HTTP Request 1   |                         |
     |  Authorization:       |                         |
-    |    Bearer <token>     |                         |
+    |    Bearer &lt;token&gt;     |                         |
     |  (plaintext, local)   |                         |
-    +---------------------->|                         |
+    +----------------------&gt;|                         |
     |                       |                         |
     |              (2) Sidecar (ONCE PER TOKEN, CONN):|
     |              - Computes ath = SHA256(token)      |
@@ -761,10 +873,10 @@ Email: jonian.musa@chase.com</t>
     |                       |                         |
     |                       |  (3) mTLS Request       |
     |                       |  Authorization:         |
-    |                       |    Bearer <token>       |
+    |                       |    Bearer &lt;token&gt;       |
     |                       |  Session-Binding-Proof: |
-    |                       |    <proof_jwt>          |
-    |                       +------------------------>|
+    |                       |    &lt;proof_jwt&gt;          |
+    |                       +------------------------&gt;|
     |                       |                         |
     |                       |  (4) Server verifies:   |
     |                       |  1. sig matches cert    |
@@ -774,64 +886,64 @@ Email: jonian.musa@chase.com</t>
     |                       |  (caches binding)       |
     |                       |                         |
     |                       |  (5) 200 OK             |
-    |                       |<------------------------+
+    |                       |&lt;------------------------+
     |  (6) 200 OK           |                         |
-    |<----------------------+                         |
+    |&lt;----------------------+                         |
     |                       |                         |
     |  (7) HTTP Request 2   |                         |
     |  Authorization:       |                         |
-    |    Bearer <token>     |                         |
-    +---------------------->|                         |
+    |    Bearer &lt;token&gt;     |                         |
+    +----------------------&gt;|                         |
     |                       |                         |
     |              (8) Sidecar reuses proof            |
     |                       |                         |
     |                       |  (9) mTLS Request       |
     |                       |  Authorization:         |
-    |                       |    Bearer <token>       |
+    |                       |    Bearer &lt;token&gt;       |
     |                       |  Session-Binding-Proof: |
-    |                       |    <proof_jwt> (reused) |
-    |                       +------------------------>|
+    |                       |    &lt;proof_jwt&gt; (reused) |
+    |                       +------------------------&gt;|
     |                       |                         |
     |                       |  (10) Cache hit:        |
     |                       |  binding verified       |
     |                       |                         |
     |                       |  (11) 200 OK            |
-    |                       |<------------------------+
+    |                       |&lt;------------------------+
     |  (12) 200 OK          |                         |
-    |<----------------------+                         |
+    |&lt;----------------------+                         |
     |                       |                         |
-]]></artwork>
+</artwork>
 </section>
 
 <section anchor="http-2-multi-user-multiplexing"><name>HTTP/2 Multi-User Multiplexing</name>
 <t>In a typical agentic deployment, Agent A serves multiple users concurrently. Each user's request triggers an on-behalf-of (OBO) token exchange, producing a distinct access token. All outbound requests to Agent B share a single HTTP/2 mTLS connection, multiplexed across streams:</t>
 
-<artwork><![CDATA[ Agent A     Sidecar                   Agent B
+<artwork> Agent A     Sidecar                   Agent B
     |            |                        |
-    |            |=== mTLS (one conn) ===>|
+    |            |=== mTLS (one conn) ===&gt;|
     |            |    EKM derived once    |
     |            |                        |
  User 1:        |                        |
-    |--Token_1-->|                        |
-    |            |--(stream 1)----------->|
+    |--Token_1--&gt;|                        |
+    |            |--(stream 1)-----------&gt;|
     |            |  Bearer: Token_1       |
     |            |  Proof: {ath_1,ekm}    |
     |            |  (signed once)         |
     |            |                        |
  User 2:        |                        |
-    |--Token_2-->|                        |
-    |            |--(stream 3)----------->|
+    |--Token_2--&gt;|                        |
+    |            |--(stream 3)-----------&gt;|
     |            |  Bearer: Token_2       |
     |            |  Proof: {ath_2,ekm}    |
     |            |  (signed once)         |
     |            |                        |
  User 1 again:  |                        |
-    |--Token_1-->|                        |
-    |            |--(stream 5)----------->|
+    |--Token_1--&gt;|                        |
+    |            |--(stream 5)-----------&gt;|
     |            |  Bearer: Token_1       |
     |            |  Proof: reused         |
     |            |                        |
-]]></artwork>
+</artwork>
 <t>Each token is signed <strong>once</strong> when first seen on this connection. Subsequent requests with the same token reuse the cached proof. With N users and M requests per user, the total signing cost is N (one per token) rather than N×M (one per request as with DPoP).</t>
 </section>
 
@@ -862,9 +974,11 @@ Email: jonian.musa@chase.com</t>
 <section anchor="connection-lifecycle-management"><name>Connection Lifecycle Management</name>
 <t>Sidecars that implement this specification should handle TLS connection lifecycle events to manage the EKM and proof caches correctly. A typical implementation uses a layered architecture:</t>
 
-<ul spacing="compact">
-<li><strong>Connection-level layer</strong> (e.g., a network filter or transport callback): Derives the EKM when a new mTLS connection is established and stores it in connection-scoped state. Registers a callback for connection close events.</li>
-<li><strong>Request-level layer</strong> (e.g., an HTTP filter): Reads the cached EKM from the connection-scoped state, constructs or retrieves the cached proof for each token, and injects the <tt>Session-Binding-Proof</tt> header into outbound requests.</li>
+<ul>
+<li><t><strong>Connection-level layer</strong> (e.g., a network filter or transport callback): Derives the EKM when a new mTLS connection is established and stores it in connection-scoped state. Registers a callback for connection close events.</t>
+</li>
+<li><t><strong>Request-level layer</strong> (e.g., an HTTP filter): Reads the cached EKM from the connection-scoped state, constructs or retrieves the cached proof for each token, and injects the <tt>Session-Binding-Proof</tt> header into outbound requests.</t>
+</li>
 </ul>
 <t>When a TLS connection terminates, all connection-scoped state — including the EKM and all cached proofs for that connection — SHOULD be purged automatically. Frameworks that support connection-scoped storage (e.g., per-connection filter state) provide this cleanup naturally without requiring explicit invalidation logic.</t>
 <t>When a connection to the upstream resource server is lost and a new one is established, the sidecar derives a fresh EKM from the new handshake and constructs new proofs. Previously cached proofs are invalid because they contain the old connection's EKM.</t>
@@ -888,11 +1002,15 @@ Email: jonian.musa@chase.com</t>
 <t>The resulting SVID is short-lived (typically between one minute and one hour, depending on deployment policy) and is automatically rotated by the SPIRE agent before expiry.</t>
 <t>When a Session-Binding Proof is signed by the private key of a SPIFFE X.509-SVID, the resource server's verification implies the following chain:</t>
 
-<ul spacing="compact">
-<li>The access token was presented on a specific TLS connection (EKM binding).</li>
-<li>That connection was established by the workload whose private key signed the proof.</li>
-<li>That workload was attested by a SPIRE agent as running on an attested node.</li>
-<li>The SVID was valid and within its short-lived issuance window at the time of proof construction.</li>
+<ul>
+<li><t>The access token was presented on a specific TLS connection (EKM binding).</t>
+</li>
+<li><t>That connection was established by the workload whose private key signed the proof.</t>
+</li>
+<li><t>That workload was attested by a SPIRE agent as running on an attested node.</t>
+</li>
+<li><t>The SVID was valid and within its short-lived issuance window at the time of proof construction.</t>
+</li>
 </ul>
 <t>This property — authorization bound to attested workload identity — is not achievable with DPoP, whose key has no provenance beyond self-generation, or with RFC 8705 alone, which binds to a certificate thumbprint but does not constrain how the certificate was issued or how long it has been valid. The combination of this specification with SPIFFE/SPIRE delivers identity-rooted proof of possession: the binding key is not &quot;a key the client generated&quot; but &quot;a key issued to a specific attested workload through a verifiable trust chain.&quot;</t>
 </section>
@@ -902,7 +1020,7 @@ Email: jonian.musa@chase.com</t>
 <section anchor="without-sidecar-direct-integration"><name>Without Sidecar (Direct Integration)</name>
 <t>In this variant, the workload process itself obtains the SVID via the SPIFFE Workload API and uses it directly for mTLS connections. The workload also constructs the Session-Binding Proof using the SVID private key.</t>
 
-<artwork><![CDATA[ SPIRE Server
+<artwork> SPIRE Server
       |
       | (node + workload attestation)
       |
@@ -930,7 +1048,7 @@ Email: jonian.musa@chase.com</t>
                       |
                       v
              Remote Resource Server
-]]></artwork>
+</artwork>
 <t>The SPIFFE Workload API (typically a Unix domain socket) delivers the current SVID and its private key to the workload process. The workload uses this SVID as its mTLS client certificate and constructs the Session-Binding Proof by signing with the corresponding private key.</t>
 <t><strong>SVID rotation</strong>: When the SPIRE agent rotates the SVID (before expiry), the workload receives the new SVID via the Workload API. The workload SHOULD establish new mTLS connections using the new SVID. Each new connection produces a new EKM; fresh proofs must be constructed for any tokens presented on those connections. Previously cached proofs, which reference the old connection's EKM, remain valid only on connections established with the old SVID.</t>
 <t><strong>Security note</strong>: In this variant, the SVID private key resides in the same process as the agent's application logic and LLM runtime. The key-isolation benefit described in <xref target="appendix-sidecar"></xref> does not apply. A workload compromise may expose both the access token and the private key. This variant is appropriate for environments where process-level compromise is not the primary threat model, or where hardware-backed key storage (e.g., PKCS#11, TPM) is enforced at the platform level independently of the application.</t>
@@ -939,7 +1057,7 @@ Email: jonian.musa@chase.com</t>
 <section anchor="with-sidecar-recommended-for-agentic-ai"><name>With Sidecar (Recommended for Agentic AI)</name>
 <t>In this variant, the SPIRE agent delivers the SVID exclusively to the sidecar. The workload process never receives the SVID private key. The sidecar holds the key, establishes all outbound mTLS connections, and constructs Session-Binding Proofs transparently. This is the pattern described in <xref target="appendix-sidecar"></xref>, extended to SPIFFE/SPIRE environments.</t>
 
-<artwork><![CDATA[ SPIRE Server
+<artwork> SPIRE Server
       |
       | (node + workload attestation)
       |
@@ -962,13 +1080,13 @@ Email: jonian.musa@chase.com</t>
  |  |                  |     |  - proof cache     |    |
  |  +--------+---------+     +--------+----------+    |
  |           |  plaintext HTTP (loopback/UDS)          |
- |           +------------>-----------+                |
+ |           +------------&gt;-----------+                |
  |                                    |  mTLS (SVID)   |
  +------------------------------------+----------------+
                                       |
                                       v
                              Remote Resource Server
-]]></artwork>
+</artwork>
 <t>Envoy-based sidecars typically receive SVID updates from the SPIRE agent via Secret Discovery Service (SDS). When the SVID rotates, the sidecar receives the new certificate and key via SDS and uses it for all subsequent outbound connections. The sidecar's connection lifecycle management described in <xref target="appendix-sidecar"></xref> applies directly: on SVID rotation, a new mTLS connection to the resource server produces a new EKM, and the sidecar constructs fresh proofs for any tokens presented on that connection. Resource servers caching <tt>(connection_id, ath)</tt> bindings are unaffected, as each cache entry is keyed on the connection rather than the certificate.</t>
 </section>
 </section>
@@ -977,9 +1095,11 @@ Email: jonian.musa@chase.com</t>
 <t>SPIFFE X.509-SVIDs and WIMSE Workload Identity Tokens (WITs) serve the same purpose — carrying attested workload identity — through different credential formats. This specification is compatible with both.</t>
 <t>When WIMSE WIT/WPT is used alongside this specification in a workload-to-workload flow, the two mechanisms address complementary questions at different layers:</t>
 
-<ul spacing="compact">
-<li><strong>WIMSE WIT/WPT</strong>: &quot;Is this workload who it claims to be, and is this the workload that holds the corresponding private key?&quot; (application-layer identity assertion and per-request proof of possession)</li>
-<li><strong>This specification</strong>: &quot;Is this OAuth access token being presented on the TLS connection that this workload authenticated?&quot; (TLS-channel-level token binding)</li>
+<ul>
+<li><t><strong>WIMSE WIT/WPT</strong>: &quot;Is this workload who it claims to be, and is this the workload that holds the corresponding private key?&quot; (application-layer identity assertion and per-request proof of possession)</t>
+</li>
+<li><t><strong>This specification</strong>: &quot;Is this OAuth access token being presented on the TLS connection that this workload authenticated?&quot; (TLS-channel-level token binding)</t>
+</li>
 </ul>
 <t>Together they close the complete chain: workload identity is asserted and proven at the application layer (WIT/WPT), and the OAuth authorization token is cryptographically bound to the specific connection that workload established (this specification). Neither mechanism alone provides both properties.</t>
 </section>
