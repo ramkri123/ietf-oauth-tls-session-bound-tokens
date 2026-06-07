@@ -12,7 +12,7 @@
 <meta content="
        This document defines a mechanism for binding OAuth 2.0 access tokens to a specific mutual TLS (mTLS) connection. The binding is achieved through a proof token that incorporates the TLS Exporter value   derived from the current connection and an access token hash, signed by the client's private key corresponding to its mTLS certificate. This mechanism prevents stolen bearer tokens from being replayed on a different TLS connection. The proof is constructed once per (token, connection) pair and reused across all requests on that connection, delivering session binding with no per-request signing overhead and no additional key management beyond what mTLS already provides. The mechanism is applicable to TLS 1.2, TLS 1.3, and QUIC transports. While applicable to any OAuth 2.0 access token presented over mTLS, this specification is primarily motivated by the Token Exchange protocol  , where multi-hop delegation chains in autonomous, agent-driven architectures create elevated replay risk. 
     " name="description">
-<meta content="xml2rfc 3.29.0" name="generator">
+<meta content="xml2rfc 3.34.0" name="generator">
 <meta content="oauth" name="keyword">
 <meta content="token exchange" name="keyword">
 <meta content="tls" name="keyword">
@@ -22,19 +22,19 @@
 <meta content="bearer token" name="keyword">
 <meta content="draft-mw-oauth-tls-session-bound-tokens-05" name="ietf.draft">
 <!-- Generator version information:
-  xml2rfc 3.29.0
-    Python 3.10.12
-    ConfigArgParse 1.7.1
+  xml2rfc 3.34.0
+    Python 3.12.9
+    ConfigArgParse 1.7.5
     google-i18n-address 3.1.1
-    intervaltree 3.1.0
+    intervaltree 3.2.1
     Jinja2 3.1.6
-    lxml 5.4.0
-    platformdirs 4.3.8
-    pycountry 24.6.1
-    PyYAML 5.4.1
+    lxml 6.1.1
+    natsort 8.4.0
+    platformdirs 4.9.6
+    pycountry 26.2.16
+    PyYAML 6.0.1
     requests 2.31.0
-    setuptools 80.9.0
-    wcwidth 0.2.13
+    wcwidth 0.8.0
 -->
 <link href="draft-mw-oauth-tls-session-bound-tokens-05.xml" rel="alternate" type="application/rfc+xml">
 <link href="#copyright" rel="license">
@@ -52,9 +52,9 @@
 */
 
 /* fonts */
-@import url('https://fonts.googleapis.com/css?family=Noto+Sans'); /* Sans-serif */
-@import url('https://fonts.googleapis.com/css?family=Noto+Serif'); /* Serif (print) */
-@import url('https://fonts.googleapis.com/css?family=Roboto+Mono'); /* Monospace */
+@import url('https://static.ietf.org/fonts/noto-sans/import.css'); /* Sans-serif */
+@import url('https://static.ietf.org/fonts/noto-serif/import.css'); /* Serif (print) */
+@import url('https://static.ietf.org/fonts/roboto-mono/import.css'); /* Monospace */
 
 :root {
   --font-sans: 'Noto Sans', Arial, Helvetica, sans-serif;
@@ -1196,6 +1196,7 @@ dl > dd > dl {
 /* This should match the element list in writer.text.TextWriter.render_dl() */
 dd > div.artwork:first-child,
 dd > aside:first-child,
+dd > blockquote:first-child,
 dd > figure:first-child,
 dd > ol:first-child,
 dd > div.sourcecode:first-child,
@@ -1220,7 +1221,6 @@ li > p:last-of-type:only-child {
 <script type="application/javascript">async function addMetadata(){try{const e=document.styleSheets[0].cssRules;for(let t=0;t<e.length;t++)if(/#identifiers/.exec(e[t].selectorText)){const a=e[t].cssText.replace("#identifiers","#external-updates");document.styleSheets[0].insertRule(a,document.styleSheets[0].cssRules.length)}}catch(e){console.log(e)}const e=document.getElementById("external-metadata");if(e)try{var t,a="",o=function(e){const t=document.getElementsByTagName("meta");for(let a=0;a<t.length;a++)if(t[a].getAttribute("name")===e)return t[a].getAttribute("content");return""}("rfc.number");if(o){t="https://www.rfc-editor.org/rfc/rfc"+o+".json";try{const e=await fetch(t);a=await e.json()}catch(e){t=document.URL.indexOf("html")>=0?document.URL.replace(/html$/,"json"):document.URL+".json";const o=await fetch(t);a=await o.json()}}if(!a)return;e.style.display="block";const s="",d="https://datatracker.ietf.org/doc",n="https://datatracker.ietf.org/ipr/search",c="https://www.rfc-editor.org/info",l=a.doc_id.toLowerCase(),i=a.doc_id.slice(0,3).toLowerCase(),f=a.doc_id.slice(3).replace(/^0+/,""),u={status:"Status",obsoletes:"Obsoletes",obsoleted_by:"Obsoleted By",updates:"Updates",updated_by:"Updated By",see_also:"See Also",errata_url:"Errata"};let h="<dl style='overflow:hidden' id='external-updates'>";["status","obsoletes","obsoleted_by","updates","updated_by","see_also","errata_url"].forEach(e=>{if("status"==e){a[e]=a[e].toLowerCase();var t=a[e].split(" "),o=t.length,w="",p=1;for(let e=0;e<o;e++)p<o?w=w+r(t[e])+" ":w+=r(t[e]),p++;a[e]=w}else if("obsoletes"==e||"obsoleted_by"==e||"updates"==e||"updated_by"==e){var g,m="",b=1;g=a[e].length;for(let t=0;t<g;t++)a[e][t]&&(a[e][t]=String(a[e][t]).toLowerCase(),m=b<g?m+"<a href='"+s+"/rfc/".concat(a[e][t])+"'>"+a[e][t].slice(3)+"</a>, ":m+"<a href='"+s+"/rfc/".concat(a[e][t])+"'>"+a[e][t].slice(3)+"</a>",b++);a[e]=m}else if("see_also"==e){var y,L="",C=1;y=a[e].length;for(let t=0;t<y;t++)if(a[e][t]){a[e][t]=String(a[e][t]);var _=a[e][t].slice(0,3),v=a[e][t].slice(3).replace(/^0+/,"");L=C<y?"RFC"!=_?L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+_+" "+v+"</a>, ":L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+v+"</a>, ":"RFC"!=_?L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+_+" "+v+"</a>":L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+v+"</a>",C++}a[e]=L}else if("errata_url"==e){var R="";R=a[e]?R+"<a href='"+a[e]+"'>Errata exist</a> | <a href='"+d+"/"+l+"'>Datatracker</a>| <a href='"+n+"/?"+i+"="+f+"&submit="+i+"'>IPR</a> | <a href='"+c+"/"+l+"'>Info page</a>":"<a href='"+d+"/"+l+"'>Datatracker</a> | <a href='"+n+"/?"+i+"="+f+"&submit="+i+"'>IPR</a> | <a href='"+c+"/"+l+"'>Info page</a>",a[e]=R}""!=a[e]?"Errata"==u[e]?h+=`<dt>More info:</dt><dd>${a[e]}</dd>`:h+=`<dt>${u[e]}:</dt><dd>${a[e]}</dd>`:"Errata"==u[e]&&(h+=`<dt>More info:</dt><dd>${a[e]}</dd>`)}),h+="</dl>",e.innerHTML=h}catch(e){console.log(e)}else console.log("Could not locate metadata <div> element");function r(e){return e.charAt(0).toUpperCase()+e.slice(1)}}window.removeEventListener("load",addMetadata),window.addEventListener("load",addMetadata);</script>
 </head>
 <body class="xml2rfc">
-<script src="metadata.min.js"></script>
 <table class="ears">
 <thead><tr>
 <td class="left">Internet-Draft</td>
@@ -1412,6 +1412,14 @@ li > p:last-of-type:only-child {
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.6">
                 <p id="section-toc.1-1.4.2.6.1"><a href="#section-4.6" class="auto internal xref">4.6</a>.  <a href="#name-relationship-to-rfc-8693-to" class="internal xref">Relationship to RFC 8693 (Token Exchange)</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.6.2.1">
+                    <p id="section-toc.1-1.4.2.6.2.1.1"><a href="#section-4.6.1" class="auto internal xref">4.6.1</a>.  <a href="#name-multi-hop-delegation-and-pr" class="internal xref">Multi-Hop Delegation and Prior-Hop Verification</a></p>
+</li>
+                </ul>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.7">
+                <p id="section-toc.1-1.4.2.7.1"><a href="#section-4.7" class="auto internal xref">4.7</a>.  <a href="#name-relationship-to-agentic-ai-" class="internal xref">Relationship to Agentic AI Authentication Frameworks</a></p>
 </li>
             </ul>
 </li>
@@ -1488,66 +1496,71 @@ li > p:last-of-type:only-child {
             </ul>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8">
-            <p id="section-toc.1-1.8.1"><a href="#section-8" class="auto internal xref">8</a>.  <a href="#name-normative-references" class="internal xref">Normative References</a></p>
+            <p id="section-toc.1-1.8.1"><a href="#section-8" class="auto internal xref">8</a>.  <a href="#name-references" class="internal xref">References</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8.2.1">
+                <p id="section-toc.1-1.8.2.1.1"><a href="#section-8.1" class="auto internal xref">8.1</a>.  <a href="#name-normative-references" class="internal xref">Normative References</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8.2.2">
+                <p id="section-toc.1-1.8.2.2.1"><a href="#section-8.2" class="auto internal xref">8.2</a>.  <a href="#name-informative-references" class="internal xref">Informative References</a></p>
+</li>
+            </ul>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9">
-            <p id="section-toc.1-1.9.1"><a href="#section-9" class="auto internal xref">9</a>.  <a href="#name-informative-references" class="internal xref">Informative References</a></p>
+            <p id="section-toc.1-1.9.1"><a href="#appendix-A" class="auto internal xref">Appendix A</a>.  <a href="#name-contributors" class="internal xref">Contributors</a></p>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10">
-            <p id="section-toc.1-1.10.1"><a href="#appendix-A" class="auto internal xref">Appendix A</a>.  <a href="#name-contributors" class="internal xref">Contributors</a></p>
-</li>
-          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11">
-            <p id="section-toc.1-1.11.1"><a href="#appendix-B" class="auto internal xref">Appendix B</a>.  <a href="#name-sidecar-deployment-for-agen" class="internal xref">Sidecar Deployment for Agentic AI</a></p>
+            <p id="section-toc.1-1.10.1"><a href="#appendix-B" class="auto internal xref">Appendix B</a>.  <a href="#name-sidecar-deployment-for-agen" class="internal xref">Sidecar Deployment for Agentic AI</a></p>
 <ul class="compact toc ulBare ulEmpty">
-<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.1">
-                <p id="section-toc.1-1.11.2.1.1"><a href="#appendix-B.1" class="auto internal xref">B.1</a>.  <a href="#name-architecture" class="internal xref">Architecture</a></p>
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10.2.1">
+                <p id="section-toc.1-1.10.2.1.1"><a href="#appendix-B.1" class="auto internal xref">B.1</a>.  <a href="#name-architecture" class="internal xref">Architecture</a></p>
 </li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.2">
-                <p id="section-toc.1-1.11.2.2.1"><a href="#appendix-B.2" class="auto internal xref">B.2</a>.  <a href="#name-request-flow" class="internal xref">Request Flow</a></p>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10.2.2">
+                <p id="section-toc.1-1.10.2.2.1"><a href="#appendix-B.2" class="auto internal xref">B.2</a>.  <a href="#name-request-flow" class="internal xref">Request Flow</a></p>
 </li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.3">
-                <p id="section-toc.1-1.11.2.3.1"><a href="#appendix-B.3" class="auto internal xref">B.3</a>.  <a href="#name-http-2-multi-user-multiplex" class="internal xref">HTTP/2 Multi-User Multiplexing</a></p>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10.2.3">
+                <p id="section-toc.1-1.10.2.3.1"><a href="#appendix-B.3" class="auto internal xref">B.3</a>.  <a href="#name-http-2-multi-user-multiplex" class="internal xref">HTTP/2 Multi-User Multiplexing</a></p>
 </li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.4">
-                <p id="section-toc.1-1.11.2.4.1"><a href="#appendix-B.4" class="auto internal xref">B.4</a>.  <a href="#name-security-benefits" class="internal xref">Security Benefits</a></p>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10.2.4">
+                <p id="section-toc.1-1.10.2.4.1"><a href="#appendix-B.4" class="auto internal xref">B.4</a>.  <a href="#name-security-benefits" class="internal xref">Security Benefits</a></p>
 </li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.5">
-                <p id="section-toc.1-1.11.2.5.1"><a href="#appendix-B.5" class="auto internal xref">B.5</a>.  <a href="#name-relationship-to-existing-in" class="internal xref">Relationship to Existing Infrastructure</a></p>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10.2.5">
+                <p id="section-toc.1-1.10.2.5.1"><a href="#appendix-B.5" class="auto internal xref">B.5</a>.  <a href="#name-relationship-to-existing-in" class="internal xref">Relationship to Existing Infrastructure</a></p>
 </li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.6">
-                <p id="section-toc.1-1.11.2.6.1"><a href="#appendix-B.6" class="auto internal xref">B.6</a>.  <a href="#name-implementation-consideratio" class="internal xref">Implementation Considerations</a></p>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10.2.6">
+                <p id="section-toc.1-1.10.2.6.1"><a href="#appendix-B.6" class="auto internal xref">B.6</a>.  <a href="#name-implementation-consideratio" class="internal xref">Implementation Considerations</a></p>
 <ul class="compact toc ulBare ulEmpty">
-<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.6.2.1">
-                    <p id="section-toc.1-1.11.2.6.2.1.1"><a href="#appendix-B.6.1" class="auto internal xref">B.6.1</a>.  <a href="#name-connection-lifecycle-manage" class="internal xref">Connection Lifecycle Management</a></p>
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10.2.6.2.1">
+                    <p id="section-toc.1-1.10.2.6.2.1.1"><a href="#appendix-B.6.1" class="auto internal xref">B.6.1</a>.  <a href="#name-connection-lifecycle-manage" class="internal xref">Connection Lifecycle Management</a></p>
 </li>
                 </ul>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11">
+            <p id="section-toc.1-1.11.1"><a href="#appendix-C" class="auto internal xref">Appendix C</a>.  <a href="#name-spiffe-spire-integration" class="internal xref">SPIFFE/SPIRE Integration</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.1">
+                <p id="section-toc.1-1.11.2.1.1"><a href="#appendix-C.1" class="auto internal xref">C.1</a>.  <a href="#name-identity-provenance-propert" class="internal xref">Identity-Provenance Property</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.2">
+                <p id="section-toc.1-1.11.2.2.1"><a href="#appendix-C.2" class="auto internal xref">C.2</a>.  <a href="#name-deployment-variants" class="internal xref">Deployment Variants</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.2.2.1">
+                    <p id="section-toc.1-1.11.2.2.2.1.1"><a href="#appendix-C.2.1" class="auto internal xref">C.2.1</a>.  <a href="#name-without-sidecar-direct-inte" class="internal xref">Without Sidecar (Direct Integration)</a></p>
+</li>
+                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.2.2.2">
+                    <p id="section-toc.1-1.11.2.2.2.2.1"><a href="#appendix-C.2.2" class="auto internal xref">C.2.2</a>.  <a href="#name-with-sidecar-recommended-fo" class="internal xref">With Sidecar (Recommended for Agentic AI)</a></p>
+</li>
+                </ul>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.3">
+                <p id="section-toc.1-1.11.2.3.1"><a href="#appendix-C.3" class="auto internal xref">C.3</a>.  <a href="#name-relationship-to-wimse-wit-wp" class="internal xref">Relationship to WIMSE WIT/WPT</a></p>
 </li>
             </ul>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12">
-            <p id="section-toc.1-1.12.1"><a href="#appendix-C" class="auto internal xref">Appendix C</a>.  <a href="#name-spiffe-spire-integration" class="internal xref">SPIFFE/SPIRE Integration</a></p>
-<ul class="compact toc ulBare ulEmpty">
-<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12.2.1">
-                <p id="section-toc.1-1.12.2.1.1"><a href="#appendix-C.1" class="auto internal xref">C.1</a>.  <a href="#name-identity-provenance-propert" class="internal xref">Identity-Provenance Property</a></p>
-</li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12.2.2">
-                <p id="section-toc.1-1.12.2.2.1"><a href="#appendix-C.2" class="auto internal xref">C.2</a>.  <a href="#name-deployment-variants" class="internal xref">Deployment Variants</a></p>
-<ul class="compact toc ulBare ulEmpty">
-<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12.2.2.2.1">
-                    <p id="section-toc.1-1.12.2.2.2.1.1"><a href="#appendix-C.2.1" class="auto internal xref">C.2.1</a>.  <a href="#name-without-sidecar-direct-inte" class="internal xref">Without Sidecar (Direct Integration)</a></p>
-</li>
-                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12.2.2.2.2">
-                    <p id="section-toc.1-1.12.2.2.2.2.1"><a href="#appendix-C.2.2" class="auto internal xref">C.2.2</a>.  <a href="#name-with-sidecar-recommended-fo" class="internal xref">With Sidecar (Recommended for Agentic AI)</a></p>
-</li>
-                </ul>
-</li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12.2.3">
-                <p id="section-toc.1-1.12.2.3.1"><a href="#appendix-C.3" class="auto internal xref">C.3</a>.  <a href="#name-relationship-to-wimse-wit-wp" class="internal xref">Relationship to WIMSE WIT/WPT</a></p>
-</li>
-            </ul>
-</li>
-          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13">
-            <p id="section-toc.1-1.13.1"><a href="#appendix-D" class="auto internal xref"></a><a href="#name-authors-addresses" class="internal xref">Authors' Addresses</a></p>
+            <p id="section-toc.1-1.12.1"><a href="#appendix-D" class="auto internal xref"></a><a href="#name-authors-addresses" class="internal xref">Authors' Addresses</a></p>
 </li>
         </ul>
 </nav>
@@ -1566,15 +1579,15 @@ li > p:last-of-type:only-child {
 <p id="section-1.1-1">OAuth 2.0 access tokens are typically <strong>bearer tokens</strong>: any party in possession of the token can use it to access protected resources, regardless of the presenter's identity or the communication channel. This is a known risk addressed by the OAuth 2.0 Security Best Current Practice <span>[<a href="#I-D.ietf-oauth-security-topics" class="cite xref">I-D.ietf-oauth-security-topics</a>]</span>.<a href="#section-1.1-1" class="pilcrow">¶</a></p>
 <p id="section-1.1-2">The Token Exchange protocol <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span> amplifies this risk by enabling chained delegation across service boundaries. Each exchange produces a new bearer token, and a compromise at any point in the chain exposes downstream tokens.<a href="#section-1.1-2" class="pilcrow">¶</a></p>
 <p id="section-1.1-3">Existing mitigations address parts of this problem:<a href="#section-1.1-3" class="pilcrow">¶</a></p>
-<ul class="normal">
-<li class="normal" id="section-1.1-4.1">
-            <p id="section-1.1-4.1.1"><strong>RFC 8705 (mTLS Certificate-Bound Tokens)</strong> <span>[<a href="#RFC8705" class="cite xref">RFC8705</a>]</span>: Binds the token to the client's X.509 certificate thumbprint. However, the binding is to the <em>certificate identity</em>, not the <em>TLS connection</em>. If the same certificate is used across connections, or if the certificate and token are both exfiltrated, the token remains replayable.<a href="#section-1.1-4.1.1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-1.1-4.1">
+            <strong>RFC 8705 (mTLS Certificate-Bound Tokens)</strong> <span>[<a href="#RFC8705" class="cite xref">RFC8705</a>]</span>: Binds the token to the client's X.509 certificate thumbprint. However, the binding is to the <em>certificate identity</em>, not the <em>TLS connection</em>. If the same certificate is used across connections, or if the certificate and token are both exfiltrated, the token remains replayable.<a href="#section-1.1-4.1" class="pilcrow">¶</a>
 </li>
-          <li class="normal" id="section-1.1-4.2">
-            <p id="section-1.1-4.2.1"><strong>RFC 9449 (DPoP)</strong> <span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span>: Provides application-layer proof-of-possession using ephemeral, application-managed keys. Applicable to both public and confidential clients, but binds to the key, not to the TLS channel, and requires generating and managing a separate key pair.<a href="#section-1.1-4.2.1" class="pilcrow">¶</a></p>
+          <li class="compact" id="section-1.1-4.2">
+            <strong>RFC 9449 (DPoP)</strong> <span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span>: Provides application-layer proof-of-possession using ephemeral, application-managed keys. Applicable to both public and confidential clients, but binds to the key, not to the TLS channel, and requires generating and managing a separate key pair.<a href="#section-1.1-4.2" class="pilcrow">¶</a>
 </li>
-          <li class="normal" id="section-1.1-4.3">
-            <p id="section-1.1-4.3.1"><strong>Token Binding</strong> <span>[<a href="#RFC8471" class="cite xref">RFC8471</a>]</span><span>[<a href="#RFC8472" class="cite xref">RFC8472</a>]</span><span>[<a href="#RFC8473" class="cite xref">RFC8473</a>]</span>: Proposed direct TLS session binding but required a new TLS extension, was never specified for Token Exchange, encountered adoption barriers in browsers and TLS 1.3 transitions, and was ultimately abandoned.<a href="#section-1.1-4.3.1" class="pilcrow">¶</a></p>
+          <li class="compact" id="section-1.1-4.3">
+            <strong>Token Binding</strong> <span>[<a href="#RFC8471" class="cite xref">RFC8471</a>]</span><span>[<a href="#RFC8472" class="cite xref">RFC8472</a>]</span><span>[<a href="#RFC8473" class="cite xref">RFC8473</a>]</span>: Proposed direct TLS session binding but required a new TLS extension, was never specified for Token Exchange, encountered adoption barriers in browsers and TLS 1.3 transitions, and was ultimately abandoned.<a href="#section-1.1-4.3" class="pilcrow">¶</a>
 </li>
         </ul>
 <p id="section-1.1-5">None of these mechanisms provide <strong>TLS-connection-level binding</strong> for OAuth 2.0 access tokens in mTLS environments. This specification fills that gap by reusing the existing mTLS key pair (no additional key generation) and amortizing the proof to once per (token, connection) pair rather than once per request — delivering stronger binding than DPoP at lower per-request cost. The binding mechanism relies on TLS Exporter values, which are available in TLS 1.2, TLS 1.3, and QUIC (via its integrated TLS 1.3 handshake), making the specification transport-agnostic across modern encrypted transports.<a href="#section-1.1-5" class="pilcrow">¶</a></p>
@@ -1586,21 +1599,21 @@ li > p:last-of-type:only-child {
 <a href="#section-1.2" class="section-number selfRef">1.2. </a><a href="#name-the-agentic-ai-amplifier" class="section-name selfRef">The Agentic AI Amplifier</a>
         </h3>
 <p id="section-1.2-1">The rise of autonomous AI agents dramatically amplifies the bearer token replay risk. Unlike traditional OAuth flows where a human initiates discrete requests, agentic AI systems:<a href="#section-1.2-1" class="pilcrow">¶</a></p>
-<ul class="normal">
-<li class="normal" id="section-1.2-2.1">
-            <p id="section-1.2-2.1.1"><strong>Autonomously chain API calls</strong>: An agent may invoke hundreds of API calls across multiple services without human intervention, each potentially involving RFC 8693 token exchanges.<a href="#section-1.2-2.1.1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-1.2-2.1">
+            <strong>Autonomously chain API calls</strong>: An agent may invoke hundreds of API calls across multiple services without human intervention, each potentially involving RFC 8693 token exchanges.<a href="#section-1.2-2.1" class="pilcrow">¶</a>
 </li>
-          <li class="normal" id="section-1.2-2.2">
-            <p id="section-1.2-2.2.1"><strong>Perform multi-hop delegation</strong>: Agent A exchanges its token for a delegated token to call Agent B, which exchanges again for Agent C. Each hop produces a new bearer token. A single compromise anywhere in this chain exposes all downstream tokens.<a href="#section-1.2-2.2.1" class="pilcrow">¶</a></p>
+          <li class="compact" id="section-1.2-2.2">
+            <strong>Perform multi-hop delegation</strong>: Agent A exchanges its token for a delegated token to call Agent B, which exchanges again for Agent C. Each hop produces a new bearer token. A single compromise anywhere in this chain exposes all downstream tokens.<a href="#section-1.2-2.2" class="pilcrow">¶</a>
 </li>
-          <li class="normal" id="section-1.2-2.3">
-            <p id="section-1.2-2.3.1"><strong>Run for extended periods</strong>: Agents operate autonomously for hours or days, providing a broad window for token interception and replay.<a href="#section-1.2-2.3.1" class="pilcrow">¶</a></p>
+          <li class="compact" id="section-1.2-2.3">
+            <strong>Run for extended periods</strong>: Agents operate autonomously for hours or days, providing a broad window for token interception and replay.<a href="#section-1.2-2.3" class="pilcrow">¶</a>
 </li>
-          <li class="normal" id="section-1.2-2.4">
-            <p id="section-1.2-2.4.1"><strong>Generate opaque traffic</strong>: Agent-to-agent API calls are fully automated. A replayed token produces legitimate-looking traffic that is extremely difficult to distinguish from genuine requests—there is no human in the loop to detect anomalies.<a href="#section-1.2-2.4.1" class="pilcrow">¶</a></p>
+          <li class="compact" id="section-1.2-2.4">
+            <strong>Generate opaque traffic</strong>: Agent-to-agent API calls are fully automated. A replayed token produces legitimate-looking traffic that is extremely difficult to distinguish from genuine requests—there is no human in the loop to detect anomalies.<a href="#section-1.2-2.4" class="pilcrow">¶</a>
 </li>
-          <li class="normal" id="section-1.2-2.5">
-            <p id="section-1.2-2.5.1"><strong>Are susceptible to prompt injection</strong>: A compromised or prompt-injected LLM agent can exfiltrate bearer tokens via tool calls, side channels, or log leakage. These tokens are immediately usable from any connection.<a href="#section-1.2-2.5.1" class="pilcrow">¶</a></p>
+          <li class="compact" id="section-1.2-2.5">
+            <strong>Are susceptible to prompt injection</strong>: A compromised or prompt-injected LLM agent can exfiltrate bearer tokens via tool calls, side channels, or log leakage. These tokens are immediately usable from any connection.<a href="#section-1.2-2.5" class="pilcrow">¶</a>
 </li>
         </ul>
 <p id="section-1.2-3">These characteristics make bearer token replay a <strong>first-order threat</strong> in agentic AI architectures. As autonomous agents increasingly drive API-to-API traffic volumes that exceed human-initiated requests, per-request cryptographic overhead becomes a significant scaling concern. This document addresses this gap by binding access tokens to the mTLS connection on which they are presented, with proof amortization that scales to high-volume agent traffic.<a href="#section-1.2-3" class="pilcrow">¶</a></p>
@@ -1613,20 +1626,17 @@ li > p:last-of-type:only-child {
         </h3>
 <p id="section-1.3-1">The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in BCP 14 <span>[<a href="#RFC2119" class="cite xref">RFC2119</a>]</span> <span>[<a href="#RFC8174" class="cite xref">RFC8174</a>]</span> when, and only when, they appear in all capitals, as shown here.<a href="#section-1.3-1" class="pilcrow">¶</a></p>
 <p id="section-1.3-2">This document uses the following terms:<a href="#section-1.3-2" class="pilcrow">¶</a></p>
-<span class="break"></span><dl class="dlParallel" id="section-1.3-3">
+<span class="break"></span><dl class="dlCompact dlParallel" id="section-1.3-3">
           <dt id="section-1.3-3.1">TLS Exporter Value (EKM):</dt>
-          <dd style="margin-left: 1.5em" id="section-1.3-3.2">
-            <p id="section-1.3-3.2.1">A value derived from the TLS handshake using the mechanism defined in <span>[<a href="#RFC5705" class="cite xref">RFC5705</a>]</span> (for TLS 1.2) or Section 7.5 of <span>[<a href="#RFC8446" class="cite xref">RFC8446</a>]</span> (for TLS 1.3). EKM stands for Exported Keying Material. The exporter value is unique to the specific TLS connection and is available to both endpoints. This document uses "EKM" and "TLS Exporter value" interchangeably.<a href="#section-1.3-3.2.1" class="pilcrow">¶</a></p>
+          <dd style="margin-left: 1.5em" id="section-1.3-3.2">A value derived from the TLS handshake using the mechanism defined in <span>[<a href="#RFC5705" class="cite xref">RFC5705</a>]</span> (for TLS 1.2) or Section 7.5 of <span>[<a href="#RFC8446" class="cite xref">RFC8446</a>]</span> (for TLS 1.3). EKM stands for Exported Keying Material. The exporter value is unique to the specific TLS connection and is available to both endpoints. This document uses "EKM" and "TLS Exporter value" interchangeably.<a href="#section-1.3-3.2" class="pilcrow">¶</a>
 </dd>
           <dd class="break"></dd>
 <dt id="section-1.3-3.3">Session-Binding Proof:</dt>
-          <dd style="margin-left: 1.5em" id="section-1.3-3.4">
-            <p id="section-1.3-3.4.1">A signed JWT presented alongside the access token that cryptographically binds the token to the current mTLS connection via the TLS Exporter value.<a href="#section-1.3-3.4.1" class="pilcrow">¶</a></p>
+          <dd style="margin-left: 1.5em" id="section-1.3-3.4">A signed JWT presented alongside the access token that cryptographically binds the token to the current mTLS connection via the TLS Exporter value.<a href="#section-1.3-3.4" class="pilcrow">¶</a>
 </dd>
           <dd class="break"></dd>
 <dt id="section-1.3-3.5">Token Exchange:</dt>
-          <dd style="margin-left: 1.5em" id="section-1.3-3.6">
-            <p id="section-1.3-3.6.1">The protocol defined in <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span> for exchanging one security token for another at an authorization server.<a href="#section-1.3-3.6.1" class="pilcrow">¶</a></p>
+          <dd style="margin-left: 1.5em" id="section-1.3-3.6">The protocol defined in <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span> for exchanging one security token for another at an authorization server.<a href="#section-1.3-3.6" class="pilcrow">¶</a>
 </dd>
         <dd class="break"></dd>
 </dl>
@@ -1645,18 +1655,14 @@ li > p:last-of-type:only-child {
 <a href="#section-2.1" class="section-number selfRef">2.1. </a><a href="#name-overview" class="section-name selfRef">Overview</a>
         </h3>
 <p id="section-2.1-1">This specification defines a proof-of-possession mechanism that binds OAuth 2.0 access tokens to the mTLS connection on which they are presented. While applicable to any OAuth 2.0 access token, it is primarily designed for tokens issued via the Token Exchange protocol <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>, where multi-hop delegation creates elevated replay risk. The mechanism operates as follows:<a href="#section-2.1-1" class="pilcrow">¶</a></p>
-<ol start="1" type="1" class="normal type-1" id="section-2.1-2">
-<li id="section-2.1-2.1">
-            <p id="section-2.1-2.1.1">The client and resource server establish an mTLS connection. Both sides derive a TLS Exporter value unique to this connection.<a href="#section-2.1-2.1.1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="compact type-1" id="section-2.1-2">
+<li id="section-2.1-2.1">The client and resource server establish an mTLS connection. Both sides derive a TLS Exporter value unique to this connection.<a href="#section-2.1-2.1" class="pilcrow">¶</a>
 </li>
-          <li id="section-2.1-2.2">
-            <p id="section-2.1-2.2.1">When first presenting an access token on a given connection, the client constructs a <strong>Session-Binding Proof</strong>: a JWT containing the hash of the access token and the TLS Exporter value.<a href="#section-2.1-2.2.1" class="pilcrow">¶</a></p>
+          <li id="section-2.1-2.2">When first presenting an access token on a given connection, the client constructs a <strong>Session-Binding Proof</strong>: a JWT containing the hash of the access token and the TLS Exporter value.<a href="#section-2.1-2.2" class="pilcrow">¶</a>
 </li>
-          <li id="section-2.1-2.3">
-            <p id="section-2.1-2.3.1">The client signs this JWT with the private key corresponding to its mTLS client certificate. The same proof MAY be reused for all subsequent requests using that token on the same connection.<a href="#section-2.1-2.3.1" class="pilcrow">¶</a></p>
+          <li id="section-2.1-2.3">The client signs this JWT with the private key corresponding to its mTLS client certificate. The same proof MAY be reused for all subsequent requests using that token on the same connection.<a href="#section-2.1-2.3" class="pilcrow">¶</a>
 </li>
-          <li id="section-2.1-2.4">
-            <p id="section-2.1-2.4.1">The resource server verifies the proof by checking the signature against the client certificate's public key, confirming the exporter value matches the current connection, confirming the token hash matches the presented access token, and confirming the issuance time is within an acceptable window. The server MUST perform these checks on every request but MAY use a per-connection cache to reduce subsequent verifications to a cache lookup.<a href="#section-2.1-2.4.1" class="pilcrow">¶</a></p>
+          <li id="section-2.1-2.4">The resource server verifies the proof by checking the signature against the client certificate's public key, confirming the exporter value matches the current connection, confirming the token hash matches the presented access token, and confirming the issuance time is within an acceptable window. The server MUST perform these checks on every request but MAY use a per-connection cache to reduce subsequent verifications to a cache lookup.<a href="#section-2.1-2.4" class="pilcrow">¶</a>
 </li>
         </ol>
 <p id="section-2.1-3">A token that requires session binding includes a confirmation method claim (<code>tls_exp</code>) containing the TLS Exporter label, which signals to the resource server that the Session-Binding Proof MUST be presented and verified.<a href="#section-2.1-3" class="pilcrow">¶</a></p>
@@ -1668,15 +1674,15 @@ li > p:last-of-type:only-child {
 <a href="#section-2.2" class="section-number selfRef">2.2. </a><a href="#name-tls-exporter-derivation" class="section-name selfRef">TLS Exporter Derivation</a>
         </h3>
 <p id="section-2.2-1">Both the client and resource server MUST derive the TLS Exporter value using the following parameters:<a href="#section-2.2-1" class="pilcrow">¶</a></p>
-<ul class="normal">
-<li class="normal" id="section-2.2-2.1">
-            <p id="section-2.2-2.1.1"><strong>Label</strong>: <code>EXPORTER-oauth-tls-session-bound</code><a href="#section-2.2-2.1.1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-2.2-2.1">
+            <strong>Label</strong>: <code>EXPORTER-oauth-tls-session-bound</code><a href="#section-2.2-2.1" class="pilcrow">¶</a>
 </li>
-          <li class="normal" id="section-2.2-2.2">
-            <p id="section-2.2-2.2.1"><strong>Context</strong>: Empty (zero-length)<a href="#section-2.2-2.2.1" class="pilcrow">¶</a></p>
+          <li class="compact" id="section-2.2-2.2">
+            <strong>Context</strong>: Empty (zero-length)<a href="#section-2.2-2.2" class="pilcrow">¶</a>
 </li>
-          <li class="normal" id="section-2.2-2.3">
-            <p id="section-2.2-2.3.1"><strong>Length</strong>: 32 octets<a href="#section-2.2-2.3.1" class="pilcrow">¶</a></p>
+          <li class="compact" id="section-2.2-2.3">
+            <strong>Length</strong>: 32 octets<a href="#section-2.2-2.3" class="pilcrow">¶</a>
 </li>
         </ul>
 <p id="section-2.2-3">For TLS 1.3, the exporter is derived as specified in Section 7.5 of <span>[<a href="#RFC8446" class="cite xref">RFC8446</a>]</span>. For TLS 1.2, the exporter is derived as specified in <span>[<a href="#RFC5705" class="cite xref">RFC5705</a>]</span>.<a href="#section-2.2-3" class="pilcrow">¶</a></p>
@@ -1730,20 +1736,17 @@ li > p:last-of-type:only-child {
             <h5 id="name-connection-level-claims-req">
 <a href="#section-2.3.2.1" class="section-number selfRef">2.3.2.1. </a><a href="#name-connection-level-claims-req" class="section-name selfRef">Connection-Level Claims (REQUIRED)</a>
             </h5>
-<span class="break"></span><dl class="dlParallel" id="section-2.3.2.1-1">
+<span class="break"></span><dl class="dlCompact dlParallel" id="section-2.3.2.1-1">
               <dt id="section-2.3.2.1-1.1">ath:</dt>
-              <dd style="margin-left: 1.5em" id="section-2.3.2.1-1.2">
-                <p id="section-2.3.2.1-1.2.1">REQUIRED. The base64url-encoded SHA-256 hash of the ASCII encoding of the associated access token value.<a href="#section-2.3.2.1-1.2.1" class="pilcrow">¶</a></p>
+              <dd style="margin-left: 1.5em" id="section-2.3.2.1-1.2">REQUIRED. The base64url-encoded SHA-256 hash of the ASCII encoding of the associated access token value.<a href="#section-2.3.2.1-1.2" class="pilcrow">¶</a>
 </dd>
               <dd class="break"></dd>
 <dt id="section-2.3.2.1-1.3">ekm:</dt>
-              <dd style="margin-left: 1.5em" id="section-2.3.2.1-1.4">
-                <p id="section-2.3.2.1-1.4.1">REQUIRED. The base64url-encoded TLS Exporter value derived as specified in <a href="#tls-exporter-derivation" class="auto internal xref">Section 2.2</a>.<a href="#section-2.3.2.1-1.4.1" class="pilcrow">¶</a></p>
+              <dd style="margin-left: 1.5em" id="section-2.3.2.1-1.4">REQUIRED. The base64url-encoded TLS Exporter value derived as specified in <a href="#tls-exporter-derivation" class="auto internal xref">Section 2.2</a>.<a href="#section-2.3.2.1-1.4" class="pilcrow">¶</a>
 </dd>
               <dd class="break"></dd>
 <dt id="section-2.3.2.1-1.5">iat:</dt>
-              <dd style="margin-left: 1.5em" id="section-2.3.2.1-1.6">
-                <p id="section-2.3.2.1-1.6.1">REQUIRED. The time at which the proof was issued, as a NumericDate (seconds since the Unix epoch). The resource server MUST verify that this value is within an acceptable window.<a href="#section-2.3.2.1-1.6.1" class="pilcrow">¶</a></p>
+              <dd style="margin-left: 1.5em" id="section-2.3.2.1-1.6">REQUIRED. The time at which the proof was issued, as a NumericDate (seconds since the Unix epoch). The resource server MUST verify that this value is within an acceptable window.<a href="#section-2.3.2.1-1.6" class="pilcrow">¶</a>
 </dd>
             <dd class="break"></dd>
 </dl>
@@ -1755,20 +1758,17 @@ li > p:last-of-type:only-child {
 <a href="#section-2.3.2.2" class="section-number selfRef">2.3.2.2. </a><a href="#name-per-request-claims-optional" class="section-name selfRef">Per-Request Claims (OPTIONAL)</a>
             </h5>
 <p id="section-2.3.2.2-1">The following claims provide intra-session request-level binding. They are OPTIONAL and intended for deployments that require defense-in-depth against intra-connection replay. When omitted, the proof can be reused across all requests on the same connection for the same token.<a href="#section-2.3.2.2-1" class="pilcrow">¶</a></p>
-<span class="break"></span><dl class="dlParallel" id="section-2.3.2.2-2">
+<span class="break"></span><dl class="dlCompact dlParallel" id="section-2.3.2.2-2">
               <dt id="section-2.3.2.2-2.1">jti:</dt>
-              <dd style="margin-left: 1.5em" id="section-2.3.2.2-2.2">
-                <p id="section-2.3.2.2-2.2.1">OPTIONAL. A unique identifier for the proof. When present, the resource server MUST verify that this value has not been seen before within the token's validity period.<a href="#section-2.3.2.2-2.2.1" class="pilcrow">¶</a></p>
+              <dd style="margin-left: 1.5em" id="section-2.3.2.2-2.2">OPTIONAL. A unique identifier for the proof. When present, the resource server MUST verify that this value has not been seen before within the token's validity period.<a href="#section-2.3.2.2-2.2" class="pilcrow">¶</a>
 </dd>
               <dd class="break"></dd>
 <dt id="section-2.3.2.2-2.3">htm:</dt>
-              <dd style="margin-left: 1.5em" id="section-2.3.2.2-2.4">
-                <p id="section-2.3.2.2-2.4.1">OPTIONAL. The HTTP method of the request to which the proof is attached (e.g., "GET", "POST"). When present, the resource server MUST verify that it matches the actual request method.<a href="#section-2.3.2.2-2.4.1" class="pilcrow">¶</a></p>
+              <dd style="margin-left: 1.5em" id="section-2.3.2.2-2.4">OPTIONAL. The HTTP method of the request to which the proof is attached (e.g., "GET", "POST"). When present, the resource server MUST verify that it matches the actual request method.<a href="#section-2.3.2.2-2.4" class="pilcrow">¶</a>
 </dd>
               <dd class="break"></dd>
 <dt id="section-2.3.2.2-2.5">htu:</dt>
-              <dd style="margin-left: 1.5em" id="section-2.3.2.2-2.6">
-                <p id="section-2.3.2.2-2.6.1">OPTIONAL. The HTTP target URI of the request to which the proof is attached, without query and fragment parts. When present, the resource server MUST verify that it matches the actual request URI.<a href="#section-2.3.2.2-2.6.1" class="pilcrow">¶</a></p>
+              <dd style="margin-left: 1.5em" id="section-2.3.2.2-2.6">OPTIONAL. The HTTP target URI of the request to which the proof is attached, without query and fragment parts. When present, the resource server MUST verify that it matches the actual request URI.<a href="#section-2.3.2.2-2.6" class="pilcrow">¶</a>
 </dd>
             <dd class="break"></dd>
 </dl>
@@ -1801,15 +1801,13 @@ li > p:last-of-type:only-child {
 }
 </pre><a href="#section-2.4-2" class="pilcrow">¶</a>
 </div>
-<span class="break"></span><dl class="dlParallel" id="section-2.4-3">
+<span class="break"></span><dl class="dlCompact dlParallel" id="section-2.4-3">
           <dt id="section-2.4-3.1">x5t#S256:</dt>
-          <dd style="margin-left: 1.5em" id="section-2.4-3.2">
-            <p id="section-2.4-3.2.1">REQUIRED. The certificate thumbprint as defined in <span>[<a href="#RFC8705" class="cite xref">RFC8705</a>]</span>.<a href="#section-2.4-3.2.1" class="pilcrow">¶</a></p>
+          <dd style="margin-left: 1.5em" id="section-2.4-3.2">REQUIRED. The certificate thumbprint as defined in <span>[<a href="#RFC8705" class="cite xref">RFC8705</a>]</span>.<a href="#section-2.4-3.2" class="pilcrow">¶</a>
 </dd>
           <dd class="break"></dd>
 <dt id="section-2.4-3.3">tls_exp:</dt>
-          <dd style="margin-left: 1.5em" id="section-2.4-3.4">
-            <p id="section-2.4-3.4.1">REQUIRED. A string value containing the TLS Exporter label that the client and resource server MUST use to derive the session-binding value. The presence of this claim signals that the resource server MUST require and verify a Session-Binding Proof whenever this token is presented. This follows the pattern of existing <code>cnf</code> members which carry key/binding material rather than boolean flags (see <span>[<a href="#RFC7800" class="cite xref">RFC7800</a>]</span>).<a href="#section-2.4-3.4.1" class="pilcrow">¶</a></p>
+          <dd style="margin-left: 1.5em" id="section-2.4-3.4">REQUIRED. A string value containing the TLS Exporter label that the client and resource server MUST use to derive the session-binding value. The presence of this claim signals that the resource server MUST require and verify a Session-Binding Proof whenever this token is presented. This follows the pattern of existing <code>cnf</code> members which carry key/binding material rather than boolean flags (see <span>[<a href="#RFC7800" class="cite xref">RFC7800</a>]</span>).<a href="#section-2.4-3.4" class="pilcrow">¶</a>
 </dd>
         <dd class="break"></dd>
 </dl>
@@ -1828,18 +1826,14 @@ li > p:last-of-type:only-child {
 <a href="#section-3.1" class="section-number selfRef">3.1. </a><a href="#name-token-issuance-with-session" class="section-name selfRef">Token Issuance with Session Binding</a>
         </h3>
 <p id="section-3.1-1">The mechanism for requesting and issuing TLS-session-bound tokens is as follows:<a href="#section-3.1-1" class="pilcrow">¶</a></p>
-<ol start="1" type="1" class="normal type-1" id="section-3.1-2">
-<li id="section-3.1-2.1">
-            <p id="section-3.1-2.1.1">The client authenticates to the authorization server using mTLS and requests a token. This MAY be a token exchange per <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>, a client credentials grant, or any other OAuth 2.0 grant type.<a href="#section-3.1-2.1.1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="compact type-1" id="section-3.1-2">
+<li id="section-3.1-2.1">The client authenticates to the authorization server using mTLS and requests a token. This MAY be a token exchange per <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>, a client credentials grant, or any other OAuth 2.0 grant type.<a href="#section-3.1-2.1" class="pilcrow">¶</a>
 </li>
-          <li id="section-3.1-2.2">
-            <p id="section-3.1-2.2.1">The authorization server issues a new access token.<a href="#section-3.1-2.2.1" class="pilcrow">¶</a></p>
+          <li id="section-3.1-2.2">The authorization server issues a new access token.<a href="#section-3.1-2.2" class="pilcrow">¶</a>
 </li>
-          <li id="section-3.1-2.3">
-            <p id="section-3.1-2.3.1">If the authorization server policy requires TLS session binding for this client, it includes the <code>cnf</code> claim with <code>tls_exp</code> set to the exporter label in the issued token.<a href="#section-3.1-2.3.1" class="pilcrow">¶</a></p>
+          <li id="section-3.1-2.3">If the authorization server policy requires TLS session binding for this client, it includes the <code>cnf</code> claim with <code>tls_exp</code> set to the exporter label in the issued token.<a href="#section-3.1-2.3" class="pilcrow">¶</a>
 </li>
-          <li id="section-3.1-2.4">
-            <p id="section-3.1-2.4.1">The client receives the token and notes the <code>tls_exp</code> requirement.<a href="#section-3.1-2.4.1" class="pilcrow">¶</a></p>
+          <li id="section-3.1-2.4">The client receives the token and notes the <code>tls_exp</code> requirement.<a href="#section-3.1-2.4" class="pilcrow">¶</a>
 </li>
         </ol>
 </section>
@@ -1850,23 +1844,19 @@ li > p:last-of-type:only-child {
 <a href="#section-3.2" class="section-number selfRef">3.2. </a><a href="#name-authorization-server-behavi" class="section-name selfRef">Authorization Server Behavior</a>
         </h3>
 <p id="section-3.2-1">The authorization server determines whether to issue TLS-session-bound tokens based on per-client configuration. The following client registration metadata parameter is defined:<a href="#section-3.2-1" class="pilcrow">¶</a></p>
-<span class="break"></span><dl class="dlParallel" id="section-3.2-2">
-          <dt id="section-3.2-2.1">tls<em>session</em>bound<em>access</em>tokens:</dt>
-          <dd style="margin-left: 1.5em" id="section-3.2-2.2">
-            <p id="section-3.2-2.2.1">OPTIONAL. A boolean value indicating that the authorization server MUST issue TLS-session-bound access tokens for this client. When set to <code>true</code>, the authorization server includes the <code>tls_exp</code> confirmation method in all access tokens issued to this client. Defaults to <code>false</code>.<a href="#section-3.2-2.2.1" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlCompact dlParallel" id="section-3.2-2">
+          <dt id="section-3.2-2.1">tls_session_bound_access_tokens:</dt>
+          <dd style="margin-left: 1.5em" id="section-3.2-2.2">OPTIONAL. A boolean value indicating that the authorization server MUST issue TLS-session-bound access tokens for this client. When set to <code>true</code>, the authorization server includes the <code>tls_exp</code> confirmation method in all access tokens issued to this client. Defaults to <code>false</code>.<a href="#section-3.2-2.2" class="pilcrow">¶</a>
 </dd>
         <dd class="break"></dd>
 </dl>
 <p id="section-3.2-3">The authorization server MAY also apply session binding based on:<a href="#section-3.2-3" class="pilcrow">¶</a></p>
-<ul class="normal">
-<li class="normal" id="section-3.2-4.1">
-            <p id="section-3.2-4.1.1">Token exchange policy: When the <code>subject_token</code> or <code>actor_token</code> in an RFC 8693 exchange is itself session-bound, the resulting token SHOULD also be session-bound to maintain the security property across the delegation chain.<a href="#section-3.2-4.1.1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-3.2-4.1">Token exchange policy: When the <code>subject_token</code> or <code>actor_token</code> in an RFC 8693 exchange is itself session-bound, the resulting token SHOULD also be session-bound to maintain the security property across the delegation chain.<a href="#section-3.2-4.1" class="pilcrow">¶</a>
 </li>
-          <li class="normal" id="section-3.2-4.2">
-            <p id="section-3.2-4.2.1">Resource server requirements: When a resource server's metadata indicates that it requires session-bound tokens.<a href="#section-3.2-4.2.1" class="pilcrow">¶</a></p>
+          <li class="compact" id="section-3.2-4.2">Resource server requirements: When a resource server's metadata indicates that it requires session-bound tokens.<a href="#section-3.2-4.2" class="pilcrow">¶</a>
 </li>
-          <li class="normal" id="section-3.2-4.3">
-            <p id="section-3.2-4.3.1">Risk-based policy: When the requested scope, audience, or delegation depth exceeds a policy threshold.<a href="#section-3.2-4.3.1" class="pilcrow">¶</a></p>
+          <li class="compact" id="section-3.2-4.3">Risk-based policy: When the requested scope, audience, or delegation depth exceeds a policy threshold.<a href="#section-3.2-4.3" class="pilcrow">¶</a>
 </li>
         </ul>
 </section>
@@ -1928,18 +1918,18 @@ li > p:last-of-type:only-child {
 <a href="#section-3.3.1" class="section-number selfRef">3.3.1. </a><a href="#name-performance-characteristics" class="section-name selfRef">Performance Characteristics</a>
           </h4>
 <p id="section-3.3.1-1">Because the Session-Binding Proof contains only connection-level claims (<code>ekm</code>, <code>ath</code>, <code>iat</code>), the client constructs and signs the proof <strong>once per (token, connection) pair</strong> and reuses it for all subsequent requests on that connection. The <code>iat</code> value reflects the time of proof construction, not the time of any particular request. This provides a significant advantage over DPoP:<a href="#section-3.3.1-1" class="pilcrow">¶</a></p>
-<ul class="normal">
-<li class="normal" id="section-3.3.1-2.1">
-              <p id="section-3.3.1-2.1.1"><strong>Proof construction (client-side)</strong>: One JWT signature per connection per token. DPoP requires one JWT signature per request.<a href="#section-3.3.1-2.1.1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-3.3.1-2.1">
+              <strong>Proof construction (client-side)</strong>: One JWT signature per connection per token. DPoP requires one JWT signature per request.<a href="#section-3.3.1-2.1" class="pilcrow">¶</a>
 </li>
-            <li class="normal" id="section-3.3.1-2.2">
-              <p id="section-3.3.1-2.2.1"><strong>Proof verification (server-side)</strong>: Full JWT verification on first presentation; the server MAY cache the verified <code>(connection, ath)</code> binding and reduce subsequent verifications to a cache lookup. DPoP requires full JWT verification per request.<a href="#section-3.3.1-2.2.1" class="pilcrow">¶</a></p>
+            <li class="compact" id="section-3.3.1-2.2">
+              <strong>Proof verification (server-side)</strong>: Full JWT verification on first presentation; the server MAY cache the verified <code>(connection, ath)</code> binding and reduce subsequent verifications to a cache lookup. DPoP requires full JWT verification per request.<a href="#section-3.3.1-2.2" class="pilcrow">¶</a>
 </li>
-            <li class="normal" id="section-3.3.1-2.3">
-              <p id="section-3.3.1-2.3.1"><strong>TLS Exporter derivation</strong>: Once per connection, cached by both sides.<a href="#section-3.3.1-2.3.1" class="pilcrow">¶</a></p>
+            <li class="compact" id="section-3.3.1-2.3">
+              <strong>TLS Exporter derivation</strong>: Once per connection, cached by both sides.<a href="#section-3.3.1-2.3" class="pilcrow">¶</a>
 </li>
-            <li class="normal" id="section-3.3.1-2.4">
-              <p id="section-3.3.1-2.4.1"><strong>No separate key management</strong>: Unlike DPoP, which requires generating, storing, and rotating an ephemeral key pair independent of TLS, this specification reuses the mTLS key pair. This eliminates an entire key lifecycle from the implementation.<a href="#section-3.3.1-2.4.1" class="pilcrow">¶</a></p>
+            <li class="compact" id="section-3.3.1-2.4">
+              <strong>No separate key management</strong>: Unlike DPoP, which requires generating, storing, and rotating an ephemeral key pair independent of TLS, this specification reuses the mTLS key pair. This eliminates an entire key lifecycle from the implementation.<a href="#section-3.3.1-2.4" class="pilcrow">¶</a>
 </li>
           </ul>
 <p id="section-3.3.1-3">When OPTIONAL per-request claims (<code>jti</code>, <code>htm</code>, <code>htu</code>) are included, the proof must be constructed per request (similar to DPoP). Deployments choose between per-connection efficiency and per-request intra-session hardening based on their threat model.<a href="#section-3.3.1-3" class="pilcrow">¶</a></p>
@@ -1956,23 +1946,18 @@ li > p:last-of-type:only-child {
 <p id="section-3.3.2-3">The resource server MAY cache verified <code>(connection_id, ath)</code> bindings to avoid re-verifying proofs on subsequent requests. Each cache entry is small (a connection identifier plus a 32-byte hash), so even connections carrying hundreds of tokens have modest memory requirements. Caching is an optimization, not a requirement: if the server does not cache (or evicts entries under memory pressure), it simply falls back to full JWT signature verification on every request — equivalent to the per-request cost of DPoP.<a href="#section-3.3.2-3" class="pilcrow">¶</a></p>
 <p id="section-3.3.2-4">When the client presents the access token to a resource server:<a href="#section-3.3.2-4" class="pilcrow">¶</a></p>
 <ol start="1" type="1" class="normal type-1" id="section-3.3.2-5">
-<li id="section-3.3.2-5.1">
-              <p id="section-3.3.2-5.1.1">The client establishes an mTLS connection with the resource server.<a href="#section-3.3.2-5.1.1" class="pilcrow">¶</a></p>
+<li id="section-3.3.2-5.1">The client establishes an mTLS connection with the resource server.<a href="#section-3.3.2-5.1" class="pilcrow">¶</a>
 </li>
-            <li id="section-3.3.2-5.2">
-              <p id="section-3.3.2-5.2.1">The client derives the TLS Exporter value for the current connection (computed once and cached).<a href="#section-3.3.2-5.2.1" class="pilcrow">¶</a></p>
+            <li id="section-3.3.2-5.2">The client derives the TLS Exporter value for the current connection (computed once and cached).<a href="#section-3.3.2-5.2" class="pilcrow">¶</a>
 </li>
-            <li id="section-3.3.2-5.3">
-              <p id="section-3.3.2-5.3.1">The client constructs a Session-Binding Proof JWT as specified in <a href="#session-binding-proof-format" class="auto internal xref">Section 2.3</a>. If the proof does not contain per-request claims, the client MAY reuse the same proof for all subsequent requests using this token on this connection.<a href="#section-3.3.2-5.3.1" class="pilcrow">¶</a></p>
+            <li id="section-3.3.2-5.3">The client constructs a Session-Binding Proof JWT as specified in <a href="#session-binding-proof-format" class="auto internal xref">Section 2.3</a>. If the proof does not contain per-request claims, the client MAY reuse the same proof for all subsequent requests using this token on this connection.<a href="#section-3.3.2-5.3" class="pilcrow">¶</a>
 </li>
             <li id="section-3.3.2-5.4">
               <p id="section-3.3.2-5.4.1">The client sends the HTTP request with:<a href="#section-3.3.2-5.4.1" class="pilcrow">¶</a></p>
-<ul class="normal">
-<li class="normal" id="section-3.3.2-5.4.2.1">
-                  <p id="section-3.3.2-5.4.2.1.1">The access token in the <code>Authorization</code> header: <code>Authorization: Bearer &lt;access_token&gt;</code><a href="#section-3.3.2-5.4.2.1.1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-3.3.2-5.4.2.1">The access token in the <code>Authorization</code> header: <code>Authorization: Bearer &lt;access_token&gt;</code><a href="#section-3.3.2-5.4.2.1" class="pilcrow">¶</a>
 </li>
-                <li class="normal" id="section-3.3.2-5.4.2.2">
-                  <p id="section-3.3.2-5.4.2.2.1">The Session-Binding Proof in the <code>Session-Binding-Proof</code> header: <code>Session-Binding-Proof: &lt;proof_jwt&gt;</code><a href="#section-3.3.2-5.4.2.2.1" class="pilcrow">¶</a></p>
+                <li class="compact" id="section-3.3.2-5.4.2.2">The Session-Binding Proof in the <code>Session-Binding-Proof</code> header: <code>Session-Binding-Proof: &lt;proof_jwt&gt;</code><a href="#section-3.3.2-5.4.2.2" class="pilcrow">¶</a>
 </li>
               </ul>
 </li>
@@ -2024,15 +2009,13 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <code>htm</code
 </pre><a href="#section-3.5-3" class="pilcrow">¶</a>
 </div>
 <p id="section-3.5-4">The following error code values are defined:<a href="#section-3.5-4" class="pilcrow">¶</a></p>
-<span class="break"></span><dl class="dlParallel" id="section-3.5-5">
+<span class="break"></span><dl class="dlCompact dlParallel" id="section-3.5-5">
           <dt id="section-3.5-5.1">invalid_proof:</dt>
-          <dd style="margin-left: 1.5em" id="section-3.5-5.2">
-            <p id="section-3.5-5.2.1">The Session-Binding Proof is malformed or failed verification. This includes signature verification failure, exporter mismatch, stale <code>iat</code>, <code>jti</code> reuse, <code>ath</code> mismatch, and <code>htm</code>/<code>htu</code> mismatch.<a href="#section-3.5-5.2.1" class="pilcrow">¶</a></p>
+          <dd style="margin-left: 1.5em" id="section-3.5-5.2">The Session-Binding Proof is malformed or failed verification. This includes signature verification failure, exporter mismatch, stale <code>iat</code>, <code>jti</code> reuse, <code>ath</code> mismatch, and <code>htm</code>/<code>htu</code> mismatch.<a href="#section-3.5-5.2" class="pilcrow">¶</a>
 </dd>
           <dd class="break"></dd>
-<dt id="section-3.5-5.3">use<em>session</em>binding:</dt>
-          <dd style="margin-left: 1.5em" id="section-3.5-5.4">
-            <p id="section-3.5-5.4.1">The access token requires a Session-Binding Proof (the <code>cnf.tls_exp</code> claim is present) but no <code>Session-Binding-Proof</code> header was provided. This error signals to the client that it must construct and present a proof.<a href="#section-3.5-5.4.1" class="pilcrow">¶</a></p>
+<dt id="section-3.5-5.3">use_session_binding:</dt>
+          <dd style="margin-left: 1.5em" id="section-3.5-5.4">The access token requires a Session-Binding Proof (the <code>cnf.tls_exp</code> claim is present) but no <code>Session-Binding-Proof</code> header was provided. This error signals to the client that it must construct and present a proof.<a href="#section-3.5-5.4" class="pilcrow">¶</a>
 </dd>
         <dd class="break"></dd>
 </dl>
@@ -2110,12 +2093,12 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <code>htm</code
         </h3>
 <p id="section-4.4-1">The WIMSE Workload Identity Token (WIT) and Workload Proof Token (WPT) defined in <span>[<a href="#I-D.ietf-wimse-s2s-protocol" class="cite xref">I-D.ietf-wimse-s2s-protocol</a>]</span> provide a proof-of-possession mechanism for workload-to-workload communication. This specification is compatible with WIMSE and addresses a complementary problem.<a href="#section-4.4-1" class="pilcrow">¶</a></p>
 <p id="section-4.4-2">WIT/WPT and this specification operate at different layers and answer different questions:<a href="#section-4.4-2" class="pilcrow">¶</a></p>
-<ul class="normal">
-<li class="normal" id="section-4.4-3.1">
-            <p id="section-4.4-3.1.1"><strong>WIMSE WIT/WPT</strong>: "Is this workload who it claims to be, and does it currently hold the private key corresponding to its identity?" (application-layer identity assertion and per-request proof of possession)<a href="#section-4.4-3.1.1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-4.4-3.1">
+            <strong>WIMSE WIT/WPT</strong>: "Is this workload who it claims to be, and does it currently hold the private key corresponding to its identity?" (application-layer identity assertion and per-request proof of possession)<a href="#section-4.4-3.1" class="pilcrow">¶</a>
 </li>
-          <li class="normal" id="section-4.4-3.2">
-            <p id="section-4.4-3.2.1"><strong>This specification</strong>: "Is this OAuth access token being presented on the TLS connection that this workload authenticated?" (TLS-channel-level token binding scoped to a specific connection)<a href="#section-4.4-3.2.1" class="pilcrow">¶</a></p>
+          <li class="compact" id="section-4.4-3.2">
+            <strong>This specification</strong>: "Is this OAuth access token being presented on the TLS connection that this workload authenticated?" (TLS-channel-level token binding scoped to a specific connection)<a href="#section-4.4-3.2" class="pilcrow">¶</a>
 </li>
         </ul>
 <p id="section-4.4-4">Neither mechanism alone provides both properties. In a workload-to-workload flow where both are deployed, WIT/WPT establishes and proves the workload's identity at the application layer while this specification ensures the OAuth authorization token is cryptographically bound to the specific connection that workload established. Together they close the complete chain: from attested workload identity to authorized, connection-scoped API access.<a href="#section-4.4-4" class="pilcrow">¶</a></p>
@@ -2136,6 +2119,65 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <code>htm</code
 <a href="#section-4.6" class="section-number selfRef">4.6. </a><a href="#name-relationship-to-rfc-8693-to" class="section-name selfRef">Relationship to RFC 8693 (Token Exchange)</a>
         </h3>
 <p id="section-4.6-1">This specification does not modify the token exchange protocol itself. The authorization server's token exchange endpoint continues to operate as specified in <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>. The session binding is applied to the <em>resulting</em> access token through the <code>cnf</code> claim. While this specification is applicable to any OAuth 2.0 access token, RFC 8693 Token Exchange is a primary motivator: each hop in a delegation chain produces a new bearer token, and session binding contains the blast radius of any single token compromise to the specific TLS connection on which it is presented.<a href="#section-4.6-1" class="pilcrow">¶</a></p>
+<div id="multi-hop-delegation-and-prior-hop-verification">
+<section id="section-4.6.1">
+          <h4 id="name-multi-hop-delegation-and-pr">
+<a href="#section-4.6.1" class="section-number selfRef">4.6.1. </a><a href="#name-multi-hop-delegation-and-pr" class="section-name selfRef">Multi-Hop Delegation and Prior-Hop Verification</a>
+          </h4>
+<p id="section-4.6.1-1">When this specification is used with actor-chain token exchange, the
+Session-Binding Proof for each hop is verified by the recipient of
+that hop.  For example, if A presents a token to B and B later
+exchanges that token for a successor token targeted to C, B (or a
+verifier co-located with B) verifies the A-to-B Session-Binding Proof
+before using the inbound token as an RFC 8693 <code>subject_token</code>.  B then
+generates a new Session-Binding Proof for its outbound token on the
+B-to-C connection, as specified in <a href="#session-binding-proof-format" class="auto internal xref">Section 2.3</a>.<a href="#section-4.6.1-1" class="pilcrow">¶</a></p>
+<p id="section-4.6.1-2">The Authorization Server handling B's exchange request can verify that
+the inbound token carries the expected <code>cnf</code> claim (certificate
+thumbprint and <code>tls_exp</code> label) and that B is the intended recipient,
+and can enforce policy governing successor-token issuance.  However,
+it cannot independently recompute the prior-hop TLS Exporter value
+because it is not an endpoint of the A-to-B connection.<a href="#section-4.6.1-2" class="pilcrow">¶</a></p>
+<p id="section-4.6.1-3">Where Authorization-Server-visible evidence of prior-hop presentation
+is required, deployments MAY require B to submit a signed confirmation
+that the inbound token and its Session-Binding Proof were verified
+before chain extension (that is, before a successor token is issued).
+This confirmation corresponds to the step proof defined in
+<span>[<a href="#I-D.draft-mw-oauth-actor-chain" class="cite xref">I-D.draft-mw-oauth-actor-chain</a>]</span> for verified-profile deployments;
+the two mechanisms are designed to be used together in high-assurance
+multi-hop architectures.<a href="#section-4.6.1-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="relationship-to-agentic-ai-authentication-frameworks">
+<section id="section-4.7">
+        <h3 id="name-relationship-to-agentic-ai-">
+<a href="#section-4.7" class="section-number selfRef">4.7. </a><a href="#name-relationship-to-agentic-ai-" class="section-name selfRef">Relationship to Agentic AI Authentication Frameworks</a>
+        </h3>
+<p id="section-4.7-1">Emerging frameworks for agentic AI authentication, such as
+<span>[<a href="#I-D.draft-klrc-aiagent-auth" class="cite xref">I-D.draft-klrc-aiagent-auth</a>]</span>, compose existing standards — WIMSE
+Workload Proof Tokens (WPT), HTTP Message Signatures, and RFC 8693
+Token Exchange — to address the identity and delegation needs of
+autonomous agents.  These frameworks recommend application-layer
+proof-of-possession mechanisms, of which DPoP <span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span> is the
+most widely deployed example, where the agent signs a per-request
+JWT with a private key to demonstrate token binding.<a href="#section-4.7-1" class="pilcrow">¶</a></p>
+<p id="section-4.7-2">For direct mTLS deployments, TLS session binding provides stronger
+protection than application-layer PoP.  WPT and DPoP bind the token
+to a key: an attacker who exfiltrates both the token and the key
+material can replay the token from any connection.  TLS session
+binding binds the token to the specific TLS connection via the TLS
+Exporter value, which cannot be reconstructed outside that connection.
+The per-request cost advantage over DPoP and WPT is described in
+<a href="#relationship-to-rfc-9449-dpop" class="auto internal xref">Section 4.2</a>.<a href="#section-4.7-2" class="pilcrow">¶</a></p>
+<p id="section-4.7-3">The two approaches are complementary.  HTTP Message Signatures, as
+recommended by such frameworks, remain appropriate for flows traversing
+TLS-terminating intermediaries where EKM derivation is unavailable
+end-to-end — a scenario outside the scope of this specification
+(see <a href="#remote-tls-termination-out-of-scope" class="auto internal xref">Section 5.2</a>).  Deployments MAY use
+TLS session binding for direct mTLS connections and HTTP Message
+Signatures for cross-intermediary legs of the same workflow.<a href="#section-4.7-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -2152,12 +2194,12 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <code>htm</code
         </h3>
 <p id="section-5.1-1">This specification requires that the entity verifying the Session-Binding Proof be an endpoint of the TLS connection on which the token is presented, or a sidecar co-located at the same trust boundary as the resource server that terminates that connection directly. In both cases, the verifier derives the EKM from the TLS session it directly participates in, and no EKM forwarding is required.<a href="#section-5.1-1" class="pilcrow">¶</a></p>
 <p id="section-5.1-2">This covers two deployment models:<a href="#section-5.1-2" class="pilcrow">¶</a></p>
-<ul class="normal">
-<li class="normal" id="section-5.1-3.1">
-            <p id="section-5.1-3.1.1"><strong>Pass-through mTLS</strong>: TLS is terminated at the application server itself. Both the client and resource server derive the EKM directly from the same connection.<a href="#section-5.1-3.1.1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-5.1-3.1">
+            <strong>Pass-through mTLS</strong>: TLS is terminated at the application server itself. Both the client and resource server derive the EKM directly from the same connection.<a href="#section-5.1-3.1" class="pilcrow">¶</a>
 </li>
-          <li class="normal" id="section-5.1-3.2">
-            <p id="section-5.1-3.2.1"><strong>Co-located sidecar</strong>: TLS is terminated at a sidecar (e.g., Envoy) running in the same pod or VM as the resource server. The sidecar derives the EKM directly and verifies the proof before passing the request to the application. This is the recommended deployment model for agentic AI environments. See <a href="#appendix-sidecar" class="auto internal xref">Appendix B</a>.<a href="#section-5.1-3.2.1" class="pilcrow">¶</a></p>
+          <li class="compact" id="section-5.1-3.2">
+            <strong>Co-located sidecar</strong>: TLS is terminated at a sidecar (e.g., Envoy) running in the same pod or VM as the resource server. The sidecar derives the EKM directly and verifies the proof before passing the request to the application. This is the recommended deployment model for agentic AI environments. See <a href="#appendix-sidecar" class="auto internal xref">Appendix B</a>.<a href="#section-5.1-3.2" class="pilcrow">¶</a>
 </li>
         </ul>
 </section>
@@ -2179,18 +2221,18 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <code>htm</code
         </h3>
 <p id="section-5.3-1">This specification is directly applicable to QUIC (<span>[<a href="#RFC9000" class="cite xref">RFC9000</a>]</span>) and HTTP/3 transports. QUIC integrates TLS 1.3 into its handshake (<span>[<a href="#RFC9001" class="cite xref">RFC9001</a>]</span>), and TLS Exporter values are available for use with QUIC connections as specified in Section 4.2 of <span>[<a href="#RFC9001" class="cite xref">RFC9001</a>]</span>.<a href="#section-5.3-1" class="pilcrow">¶</a></p>
 <p id="section-5.3-2">The following considerations apply when using this specification over QUIC:<a href="#section-5.3-2" class="pilcrow">¶</a></p>
-<ul class="normal">
-<li class="normal" id="section-5.3-3.1">
-            <p id="section-5.3-3.1.1"><strong>Exporter derivation</strong>: The TLS Exporter MUST be derived using the 1-RTT exporter keys (post-handshake). Proofs MUST NOT be constructed using 0-RTT exporter values, as these are derived from pre-shared keys and provide weaker binding guarantees.<a href="#section-5.3-3.1.1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-5.3-3.1">
+            <strong>Exporter derivation</strong>: The TLS Exporter MUST be derived using the 1-RTT exporter keys (post-handshake). Proofs MUST NOT be constructed using 0-RTT exporter values, as these are derived from pre-shared keys and provide weaker binding guarantees.<a href="#section-5.3-3.1" class="pilcrow">¶</a>
 </li>
-          <li class="normal" id="section-5.3-3.2">
-            <p id="section-5.3-3.2.1"><strong>Connection migration</strong>: QUIC connections may migrate across network paths (different IP addresses and ports) without a new TLS handshake. The TLS state — and therefore the EKM — persists across migrations. Session-Binding Proofs remain valid after connection migration.<a href="#section-5.3-3.2.1" class="pilcrow">¶</a></p>
+          <li class="compact" id="section-5.3-3.2">
+            <strong>Connection migration</strong>: QUIC connections may migrate across network paths (different IP addresses and ports) without a new TLS handshake. The TLS state — and therefore the EKM — persists across migrations. Session-Binding Proofs remain valid after connection migration.<a href="#section-5.3-3.2" class="pilcrow">¶</a>
 </li>
-          <li class="normal" id="section-5.3-3.3">
-            <p id="section-5.3-3.3.1"><strong>Client authentication</strong>: In TLS 1.3 over QUIC, post-handshake client authentication is not supported (Section 4.4 of <span>[<a href="#RFC9001" class="cite xref">RFC9001</a>]</span>). Client certificates MUST be presented during the initial handshake. This simplifies the binding model: the client identity is fixed at connection establishment.<a href="#section-5.3-3.3.1" class="pilcrow">¶</a></p>
+          <li class="compact" id="section-5.3-3.3">
+            <strong>Client authentication</strong>: In TLS 1.3 over QUIC, post-handshake client authentication is not supported (Section 4.4 of <span>[<a href="#RFC9001" class="cite xref">RFC9001</a>]</span>). Client certificates MUST be presented during the initial handshake. This simplifies the binding model: the client identity is fixed at connection establishment.<a href="#section-5.3-3.3" class="pilcrow">¶</a>
 </li>
-          <li class="normal" id="section-5.3-3.4">
-            <p id="section-5.3-3.4.1"><strong>Long-lived connections</strong>: QUIC connections are designed to be long-lived and resilient to network changes, aligning naturally with the long-lived connection guidance in <a href="#performance-characteristics" class="auto internal xref">Section 3.3.1</a>.<a href="#section-5.3-3.4.1" class="pilcrow">¶</a></p>
+          <li class="compact" id="section-5.3-3.4">
+            <strong>Long-lived connections</strong>: QUIC connections are designed to be long-lived and resilient to network changes, aligning naturally with the long-lived connection guidance in <a href="#performance-characteristics" class="auto internal xref">Section 3.3.1</a>.<a href="#section-5.3-3.4" class="pilcrow">¶</a>
 </li>
         </ul>
 </section>
@@ -2214,15 +2256,15 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <code>htm</code
           <h4 id="name-t1-cross-connection-token-r">
 <a href="#section-6.1.1" class="section-number selfRef">6.1.1. </a><a href="#name-t1-cross-connection-token-r" class="section-name selfRef">T1: Cross-Connection Token Replay</a>
           </h4>
-<ul class="normal">
-<li class="normal" id="section-6.1.1-1.1">
-              <p id="section-6.1.1-1.1.1"><strong>Threat</strong>: An attacker intercepts a bearer token and presents it on a different TLS connection.<a href="#section-6.1.1-1.1.1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-6.1.1-1.1">
+              <strong>Threat</strong>: An attacker intercepts a bearer token and presents it on a different TLS connection.<a href="#section-6.1.1-1.1" class="pilcrow">¶</a>
 </li>
-            <li class="normal" id="section-6.1.1-1.2">
-              <p id="section-6.1.1-1.2.1"><strong>Mitigation</strong>: The <code>ekm</code> claim in the proof is derived from the TLS handshake transcript and is unique per connection. The resource server compares it against its own locally-derived EKM. A replayed proof will fail the EKM comparison.<a href="#section-6.1.1-1.2.1" class="pilcrow">¶</a></p>
+            <li class="compact" id="section-6.1.1-1.2">
+              <strong>Mitigation</strong>: The <code>ekm</code> claim in the proof is derived from the TLS handshake transcript and is unique per connection. The resource server compares it against its own locally-derived EKM. A replayed proof will fail the EKM comparison.<a href="#section-6.1.1-1.2" class="pilcrow">¶</a>
 </li>
-            <li class="normal" id="section-6.1.1-1.3">
-              <p id="section-6.1.1-1.3.1"><strong>DPoP equivalent</strong>: No. DPoP binds to an application-layer key, not to the TLS connection. If the DPoP key is also exfiltrated, replay succeeds.<a href="#section-6.1.1-1.3.1" class="pilcrow">¶</a></p>
+            <li class="compact" id="section-6.1.1-1.3">
+              <strong>DPoP equivalent</strong>: No. DPoP binds to an application-layer key, not to the TLS connection. If the DPoP key is also exfiltrated, replay succeeds.<a href="#section-6.1.1-1.3" class="pilcrow">¶</a>
 </li>
           </ul>
 </section>
@@ -2232,15 +2274,15 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <code>htm</code
           <h4 id="name-t2-cross-host-token-replay">
 <a href="#section-6.1.2" class="section-number selfRef">6.1.2. </a><a href="#name-t2-cross-host-token-replay" class="section-name selfRef">T2: Cross-Host Token Replay</a>
           </h4>
-<ul class="normal">
-<li class="normal" id="section-6.1.2-1.1">
-              <p id="section-6.1.2-1.1.1"><strong>Threat</strong>: An attacker on a different host obtains a bearer token and attempts to use it.<a href="#section-6.1.2-1.1.1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-6.1.2-1.1">
+              <strong>Threat</strong>: An attacker on a different host obtains a bearer token and attempts to use it.<a href="#section-6.1.2-1.1" class="pilcrow">¶</a>
 </li>
-            <li class="normal" id="section-6.1.2-1.2">
-              <p id="section-6.1.2-1.2.1"><strong>Mitigation</strong>: The proof is signed with the client's mTLS private key. The resource server verifies the signature against the public key from the current mTLS handshake. A different host presents a different certificate, so signature verification fails.<a href="#section-6.1.2-1.2.1" class="pilcrow">¶</a></p>
+            <li class="compact" id="section-6.1.2-1.2">
+              <strong>Mitigation</strong>: The proof is signed with the client's mTLS private key. The resource server verifies the signature against the public key from the current mTLS handshake. A different host presents a different certificate, so signature verification fails.<a href="#section-6.1.2-1.2" class="pilcrow">¶</a>
 </li>
-            <li class="normal" id="section-6.1.2-1.3">
-              <p id="section-6.1.2-1.3.1"><strong>DPoP equivalent</strong>: Partial. DPoP binds to an ephemeral key, which may not be hardware-protected.<a href="#section-6.1.2-1.3.1" class="pilcrow">¶</a></p>
+            <li class="compact" id="section-6.1.2-1.3">
+              <strong>DPoP equivalent</strong>: Partial. DPoP binds to an ephemeral key, which may not be hardware-protected.<a href="#section-6.1.2-1.3" class="pilcrow">¶</a>
 </li>
           </ul>
 </section>
@@ -2250,15 +2292,15 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <code>htm</code
           <h4 id="name-t3-token-exfiltration-via-l">
 <a href="#section-6.1.3" class="section-number selfRef">6.1.3. </a><a href="#name-t3-token-exfiltration-via-l" class="section-name selfRef">T3: Token Exfiltration via LLM Prompt Injection</a>
           </h4>
-<ul class="normal">
-<li class="normal" id="section-6.1.3-1.1">
-              <p id="section-6.1.3-1.1.1"><strong>Threat</strong>: A compromised or prompt-injected AI agent exfiltrates a bearer token via tool calls, side channels, or log leakage.<a href="#section-6.1.3-1.1.1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-6.1.3-1.1">
+              <strong>Threat</strong>: A compromised or prompt-injected AI agent exfiltrates a bearer token via tool calls, side channels, or log leakage.<a href="#section-6.1.3-1.1" class="pilcrow">¶</a>
 </li>
-            <li class="normal" id="section-6.1.3-1.2">
-              <p id="section-6.1.3-1.2.1"><strong>Mitigation</strong>: The attacker obtains the token but cannot produce a valid proof. When deployed with a security sidecar (see <a href="#appendix-sidecar" class="auto internal xref">Appendix B</a>), the mTLS private key resides in a separate process inaccessible to the agent's LLM runtime. When deployed without a sidecar (direct integration, see <a href="#appendix-spiffe" class="auto internal xref">Appendix C</a>), the private key resides in the same process as the agent; key isolation in this variant depends on platform-level controls such as hardware-backed key storage. In both cases, even if the attacker also obtains the proof, the EKM will not match on a different connection.<a href="#section-6.1.3-1.2.1" class="pilcrow">¶</a></p>
+            <li class="compact" id="section-6.1.3-1.2">
+              <strong>Mitigation</strong>: The attacker obtains the token but cannot produce a valid proof. When deployed with a security sidecar (see <a href="#appendix-sidecar" class="auto internal xref">Appendix B</a>), the mTLS private key resides in a separate process inaccessible to the agent's LLM runtime. When deployed without a sidecar (direct integration, see <a href="#appendix-spiffe" class="auto internal xref">Appendix C</a>), the private key resides in the same process as the agent; key isolation in this variant depends on platform-level controls such as hardware-backed key storage. In both cases, even if the attacker also obtains the proof, the EKM will not match on a different connection.<a href="#section-6.1.3-1.2" class="pilcrow">¶</a>
 </li>
-            <li class="normal" id="section-6.1.3-1.3">
-              <p id="section-6.1.3-1.3.1"><strong>DPoP equivalent</strong>: No. DPoP keys are application-layer and typically reside in the same process as the agent, making co-exfiltration with the token likely.<a href="#section-6.1.3-1.3.1" class="pilcrow">¶</a></p>
+            <li class="compact" id="section-6.1.3-1.3">
+              <strong>DPoP equivalent</strong>: No. DPoP keys are application-layer and typically reside in the same process as the agent, making co-exfiltration with the token likely.<a href="#section-6.1.3-1.3" class="pilcrow">¶</a>
 </li>
           </ul>
 </section>
@@ -2268,15 +2310,15 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <code>htm</code
           <h4 id="name-t4-token-proof-exfiltration">
 <a href="#section-6.1.4" class="section-number selfRef">6.1.4. </a><a href="#name-t4-token-proof-exfiltration" class="section-name selfRef">T4: Token + Proof Exfiltration (Both Stolen)</a>
           </h4>
-<ul class="normal">
-<li class="normal" id="section-6.1.4-1.1">
-              <p id="section-6.1.4-1.1.1"><strong>Threat</strong>: An attacker obtains both the access token and the Session-Binding Proof, and attempts to use them on their own mTLS connection to the same resource server.<a href="#section-6.1.4-1.1.1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-6.1.4-1.1">
+              <strong>Threat</strong>: An attacker obtains both the access token and the Session-Binding Proof, and attempts to use them on their own mTLS connection to the same resource server.<a href="#section-6.1.4-1.1" class="pilcrow">¶</a>
 </li>
-            <li class="normal" id="section-6.1.4-1.2">
-              <p id="section-6.1.4-1.2.1"><strong>Mitigation</strong>: Two independent protections apply: (1) the attacker's mTLS certificate differs from the original client's, so the proof signature does not match the public key from the attacker's handshake — the resource server verifies the proof against the certificate presented on <em>this</em> connection; (2) even if the attacker somehow presents the same certificate, a different TLS connection produces a different EKM, so the <code>ekm</code> claim does not match the server's locally-derived value.<a href="#section-6.1.4-1.2.1" class="pilcrow">¶</a></p>
+            <li class="compact" id="section-6.1.4-1.2">
+              <strong>Mitigation</strong>: Two independent protections apply: (1) the attacker's mTLS certificate differs from the original client's, so the proof signature does not match the public key from the attacker's handshake — the resource server verifies the proof against the certificate presented on <em>this</em> connection; (2) even if the attacker somehow presents the same certificate, a different TLS connection produces a different EKM, so the <code>ekm</code> claim does not match the server's locally-derived value.<a href="#section-6.1.4-1.2" class="pilcrow">¶</a>
 </li>
-            <li class="normal" id="section-6.1.4-1.3">
-              <p id="section-6.1.4-1.3.1"><strong>DPoP equivalent</strong>: No. If both the DPoP proof and the DPoP key are exfiltrated, the attacker can replay from any connection.<a href="#section-6.1.4-1.3.1" class="pilcrow">¶</a></p>
+            <li class="compact" id="section-6.1.4-1.3">
+              <strong>DPoP equivalent</strong>: No. If both the DPoP proof and the DPoP key are exfiltrated, the attacker can replay from any connection.<a href="#section-6.1.4-1.3" class="pilcrow">¶</a>
 </li>
           </ul>
 </section>
@@ -2286,15 +2328,15 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <code>htm</code
           <h4 id="name-t5-multi-hop-delegation-cha">
 <a href="#section-6.1.5" class="section-number selfRef">6.1.5. </a><a href="#name-t5-multi-hop-delegation-cha" class="section-name selfRef">T5: Multi-Hop Delegation Chain Compromise</a>
           </h4>
-<ul class="normal">
-<li class="normal" id="section-6.1.5-1.1">
-              <p id="section-6.1.5-1.1.1"><strong>Threat</strong>: A token is stolen at one hop in a delegation chain (A→B→C→D) and replayed at a different hop.<a href="#section-6.1.5-1.1.1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-6.1.5-1.1">
+              <strong>Threat</strong>: A token is stolen at one hop in a delegation chain (A→B→C→D) and replayed at a different hop.<a href="#section-6.1.5-1.1" class="pilcrow">¶</a>
 </li>
-            <li class="normal" id="section-6.1.5-1.2">
-              <p id="section-6.1.5-1.2.1"><strong>Mitigation</strong>: Each hop uses a distinct mTLS connection with a distinct EKM. A token bound to one hop's connection cannot be replayed on another.<a href="#section-6.1.5-1.2.1" class="pilcrow">¶</a></p>
+            <li class="compact" id="section-6.1.5-1.2">
+              <strong>Mitigation</strong>: Each hop uses a distinct mTLS connection with a distinct EKM. A token bound to one hop's connection cannot be replayed on another.<a href="#section-6.1.5-1.2" class="pilcrow">¶</a>
 </li>
-            <li class="normal" id="section-6.1.5-1.3">
-              <p id="section-6.1.5-1.3.1"><strong>DPoP equivalent</strong>: Partial. DPoP binds per key, but the key is not inherently tied to a specific hop's connection.<a href="#section-6.1.5-1.3.1" class="pilcrow">¶</a></p>
+            <li class="compact" id="section-6.1.5-1.3">
+              <strong>DPoP equivalent</strong>: Partial. DPoP binds per key, but the key is not inherently tied to a specific hop's connection.<a href="#section-6.1.5-1.3" class="pilcrow">¶</a>
 </li>
           </ul>
 </section>
@@ -2312,15 +2354,12 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <code>htm</code
 <a href="#section-6.2.1" class="section-number selfRef">6.2.1. </a><a href="#name-intra-connection-replay" class="section-name selfRef">Intra-Connection Replay</a>
           </h4>
 <p id="section-6.2.1-1">Within the same TLS connection, an attacker with access to the channel (e.g., a compromised middleware component) could observe and replay requests. This risk is mitigated by including the OPTIONAL per-request claims:<a href="#section-6.2.1-1" class="pilcrow">¶</a></p>
-<ul class="normal">
-<li class="normal" id="section-6.2.1-2.1">
-              <p id="section-6.2.1-2.1.1">The <code>jti</code> claim, which provides per-proof uniqueness when the server maintains a replay cache.<a href="#section-6.2.1-2.1.1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-6.2.1-2.1">The <code>jti</code> claim, which provides per-proof uniqueness when the server maintains a replay cache.<a href="#section-6.2.1-2.1" class="pilcrow">¶</a>
 </li>
-            <li class="normal" id="section-6.2.1-2.2">
-              <p id="section-6.2.1-2.2.1">The <code>htm</code> and <code>htu</code> claims, which bind the proof to a specific HTTP method and URI.<a href="#section-6.2.1-2.2.1" class="pilcrow">¶</a></p>
+            <li class="compact" id="section-6.2.1-2.2">The <code>htm</code> and <code>htu</code> claims, which bind the proof to a specific HTTP method and URI.<a href="#section-6.2.1-2.2" class="pilcrow">¶</a>
 </li>
-            <li class="normal" id="section-6.2.1-2.3">
-              <p id="section-6.2.1-2.3.1">Short <code>iat</code> validity windows that limit the temporal scope of any replay.<a href="#section-6.2.1-2.3.1" class="pilcrow">¶</a></p>
+            <li class="compact" id="section-6.2.1-2.3">Short <code>iat</code> validity windows that limit the temporal scope of any replay.<a href="#section-6.2.1-2.3" class="pilcrow">¶</a>
 </li>
           </ul>
 <p id="section-6.2.1-3">Deployments that require intra-connection replay protection SHOULD include per-request claims.<a href="#section-6.2.1-3" class="pilcrow">¶</a></p>
@@ -2332,15 +2371,15 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <code>htm</code
 <a href="#section-6.2.2" class="section-number selfRef">6.2.2. </a><a href="#name-compromised-private-key" class="section-name selfRef">Compromised Private Key</a>
           </h4>
 <p id="section-6.2.2-1">If the client's mTLS private key is compromised, the attacker can produce valid proofs. Mitigations include:<a href="#section-6.2.2-1" class="pilcrow">¶</a></p>
-<ul class="normal">
-<li class="normal" id="section-6.2.2-2.1">
-              <p id="section-6.2.2-2.1.1"><strong>Hardware-backed key storage</strong>: Storing the private key in a TPM, HSM, or TEE prevents software-level exfiltration.<a href="#section-6.2.2-2.1.1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-6.2.2-2.1">
+              <strong>Hardware-backed key storage</strong>: Storing the private key in a TPM, HSM, or TEE prevents software-level exfiltration.<a href="#section-6.2.2-2.1" class="pilcrow">¶</a>
 </li>
-            <li class="normal" id="section-6.2.2-2.2">
-              <p id="section-6.2.2-2.2.1"><strong>Short-lived certificates</strong>: Using short-lived credentials (e.g., SPIFFE SVIDs with hourly or shorter expiry) limits the window during which a compromised key can be exploited.<a href="#section-6.2.2-2.2.1" class="pilcrow">¶</a></p>
+            <li class="compact" id="section-6.2.2-2.2">
+              <strong>Short-lived certificates</strong>: Using short-lived credentials (e.g., SPIFFE SVIDs with hourly or shorter expiry) limits the window during which a compromised key can be exploited.<a href="#section-6.2.2-2.2" class="pilcrow">¶</a>
 </li>
-            <li class="normal" id="section-6.2.2-2.3">
-              <p id="section-6.2.2-2.3.1"><strong>Transitive Attestation</strong>: <span>[<a href="#I-D.draft-mw-wimse-transitive-attestation" class="cite xref">I-D.draft-mw-wimse-transitive-attestation</a>]</span> binds identity to a verified execution context, providing evidence if the execution environment is tampered with.<a href="#section-6.2.2-2.3.1" class="pilcrow">¶</a></p>
+            <li class="compact" id="section-6.2.2-2.3">
+              <strong>Transitive Attestation</strong>: <span>[<a href="#I-D.draft-mw-wimse-transitive-attestation" class="cite xref">I-D.draft-mw-wimse-transitive-attestation</a>]</span> binds identity to a verified execution context, providing evidence if the execution environment is tampered with.<a href="#section-6.2.2-2.3" class="pilcrow">¶</a>
 </li>
           </ul>
 </section>
@@ -2360,18 +2399,18 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <code>htm</code
 <a href="#section-7.1" class="section-number selfRef">7.1. </a><a href="#name-oauth-token-confirmation-me" class="section-name selfRef">OAuth Token Confirmation Methods</a>
         </h3>
 <p id="section-7.1-1">This specification registers the following confirmation method in the IANA "OAuth Token Confirmation Methods" registry established by <span>[<a href="#RFC7800" class="cite xref">RFC7800</a>]</span>:<a href="#section-7.1-1" class="pilcrow">¶</a></p>
-<ul class="normal">
-<li class="normal" id="section-7.1-2.1">
-            <p id="section-7.1-2.1.1"><strong>Confirmation Method Value</strong>: <code>tls_exp</code><a href="#section-7.1-2.1.1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-7.1-2.1">
+            <strong>Confirmation Method Value</strong>: <code>tls_exp</code><a href="#section-7.1-2.1" class="pilcrow">¶</a>
 </li>
-          <li class="normal" id="section-7.1-2.2">
-            <p id="section-7.1-2.2.1"><strong>Confirmation Method Description</strong>: TLS Exporter Session Binding<a href="#section-7.1-2.2.1" class="pilcrow">¶</a></p>
+          <li class="compact" id="section-7.1-2.2">
+            <strong>Confirmation Method Description</strong>: TLS Exporter Session Binding<a href="#section-7.1-2.2" class="pilcrow">¶</a>
 </li>
-          <li class="normal" id="section-7.1-2.3">
-            <p id="section-7.1-2.3.1"><strong>Change Controller</strong>: IETF<a href="#section-7.1-2.3.1" class="pilcrow">¶</a></p>
+          <li class="compact" id="section-7.1-2.3">
+            <strong>Change Controller</strong>: IETF<a href="#section-7.1-2.3" class="pilcrow">¶</a>
 </li>
-          <li class="normal" id="section-7.1-2.4">
-            <p id="section-7.1-2.4.1"><strong>Reference</strong>: [this document]<a href="#section-7.1-2.4.1" class="pilcrow">¶</a></p>
+          <li class="compact" id="section-7.1-2.4">
+            <strong>Reference</strong>: [this document]<a href="#section-7.1-2.4" class="pilcrow">¶</a>
 </li>
         </ul>
 </section>
@@ -2382,18 +2421,18 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <code>htm</code
 <a href="#section-7.2" class="section-number selfRef">7.2. </a><a href="#name-oauth-dynamic-client-regist" class="section-name selfRef">OAuth Dynamic Client Registration Metadata</a>
         </h3>
 <p id="section-7.2-1">This specification registers the following client metadata value:<a href="#section-7.2-1" class="pilcrow">¶</a></p>
-<ul class="normal">
-<li class="normal" id="section-7.2-2.1">
-            <p id="section-7.2-2.1.1"><strong>Client Metadata Name</strong>: <code>tls_session_bound_access_tokens</code><a href="#section-7.2-2.1.1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-7.2-2.1">
+            <strong>Client Metadata Name</strong>: <code>tls_session_bound_access_tokens</code><a href="#section-7.2-2.1" class="pilcrow">¶</a>
 </li>
-          <li class="normal" id="section-7.2-2.2">
-            <p id="section-7.2-2.2.1"><strong>Client Metadata Description</strong>: Boolean indicating the client requires TLS-session-bound access tokens<a href="#section-7.2-2.2.1" class="pilcrow">¶</a></p>
+          <li class="compact" id="section-7.2-2.2">
+            <strong>Client Metadata Description</strong>: Boolean indicating the client requires TLS-session-bound access tokens<a href="#section-7.2-2.2" class="pilcrow">¶</a>
 </li>
-          <li class="normal" id="section-7.2-2.3">
-            <p id="section-7.2-2.3.1"><strong>Change Controller</strong>: IETF<a href="#section-7.2-2.3.1" class="pilcrow">¶</a></p>
+          <li class="compact" id="section-7.2-2.3">
+            <strong>Change Controller</strong>: IETF<a href="#section-7.2-2.3" class="pilcrow">¶</a>
 </li>
-          <li class="normal" id="section-7.2-2.4">
-            <p id="section-7.2-2.4.1"><strong>Reference</strong>: [this document]<a href="#section-7.2-2.4.1" class="pilcrow">¶</a></p>
+          <li class="compact" id="section-7.2-2.4">
+            <strong>Reference</strong>: [this document]<a href="#section-7.2-2.4" class="pilcrow">¶</a>
 </li>
         </ul>
 </section>
@@ -2409,15 +2448,15 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <code>htm</code
           <h4 id="name-session-binding-proof">
 <a href="#section-7.3.1" class="section-number selfRef">7.3.1. </a><a href="#name-session-binding-proof" class="section-name selfRef">Session-Binding-Proof</a>
           </h4>
-<ul class="normal">
-<li class="normal" id="section-7.3.1-1.1">
-              <p id="section-7.3.1-1.1.1"><strong>Header Field Name</strong>: <code>Session-Binding-Proof</code><a href="#section-7.3.1-1.1.1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-7.3.1-1.1">
+              <strong>Header Field Name</strong>: <code>Session-Binding-Proof</code><a href="#section-7.3.1-1.1" class="pilcrow">¶</a>
 </li>
-            <li class="normal" id="section-7.3.1-1.2">
-              <p id="section-7.3.1-1.2.1"><strong>Status</strong>: permanent<a href="#section-7.3.1-1.2.1" class="pilcrow">¶</a></p>
+            <li class="compact" id="section-7.3.1-1.2">
+              <strong>Status</strong>: permanent<a href="#section-7.3.1-1.2" class="pilcrow">¶</a>
 </li>
-            <li class="normal" id="section-7.3.1-1.3">
-              <p id="section-7.3.1-1.3.1"><strong>Reference</strong>: [this document]<a href="#section-7.3.1-1.3.1" class="pilcrow">¶</a></p>
+            <li class="compact" id="section-7.3.1-1.3">
+              <strong>Reference</strong>: [this document]<a href="#section-7.3.1-1.3" class="pilcrow">¶</a>
 </li>
           </ul>
 </section>
@@ -2430,18 +2469,18 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <code>htm</code
 <a href="#section-7.4" class="section-number selfRef">7.4. </a><a href="#name-tls-exporter-label" class="section-name selfRef">TLS Exporter Label</a>
         </h3>
 <p id="section-7.4-1">This specification registers the following TLS Exporter label in the IANA "TLS Exporter Labels" registry:<a href="#section-7.4-1" class="pilcrow">¶</a></p>
-<ul class="normal">
-<li class="normal" id="section-7.4-2.1">
-            <p id="section-7.4-2.1.1"><strong>Value</strong>: <code>EXPORTER-oauth-tls-session-bound</code><a href="#section-7.4-2.1.1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="section-7.4-2.1">
+            <strong>Value</strong>: <code>EXPORTER-oauth-tls-session-bound</code><a href="#section-7.4-2.1" class="pilcrow">¶</a>
 </li>
-          <li class="normal" id="section-7.4-2.2">
-            <p id="section-7.4-2.2.1"><strong>DTLS-OK</strong>: N<a href="#section-7.4-2.2.1" class="pilcrow">¶</a></p>
+          <li class="compact" id="section-7.4-2.2">
+            <strong>DTLS-OK</strong>: N<a href="#section-7.4-2.2" class="pilcrow">¶</a>
 </li>
-          <li class="normal" id="section-7.4-2.3">
-            <p id="section-7.4-2.3.1"><strong>Recommended</strong>: Y<a href="#section-7.4-2.3.1" class="pilcrow">¶</a></p>
+          <li class="compact" id="section-7.4-2.3">
+            <strong>Recommended</strong>: Y<a href="#section-7.4-2.3" class="pilcrow">¶</a>
 </li>
-          <li class="normal" id="section-7.4-2.4">
-            <p id="section-7.4-2.4.1"><strong>Reference</strong>: [this document]<a href="#section-7.4-2.4.1" class="pilcrow">¶</a></p>
+          <li class="compact" id="section-7.4-2.4">
+            <strong>Reference</strong>: [this document]<a href="#section-7.4-2.4" class="pilcrow">¶</a>
 </li>
         </ul>
 </section>
@@ -2449,86 +2488,99 @@ i.  <strong>Per-request claims</strong> (when present): Confirms <code>htm</code
 </section>
 </div>
 <section id="section-8">
-      <h2 id="name-normative-references">
-<a href="#section-8" class="section-number selfRef">8. </a><a href="#name-normative-references" class="section-name selfRef">Normative References</a>
+      <h2 id="name-references">
+<a href="#section-8" class="section-number selfRef">8. </a><a href="#name-references" class="section-name selfRef">References</a>
       </h2>
+<section id="section-8.1">
+        <h3 id="name-normative-references">
+<a href="#section-8.1" class="section-number selfRef">8.1. </a><a href="#name-normative-references" class="section-name selfRef">Normative References</a>
+        </h3>
 <dl class="references">
+<dt id="RFC2119">[RFC2119]</dt>
+        <dd>
+<span class="refAuthor">Bradner, S.</span>, <span class="refTitle">"Key words for use in RFCs to Indicate Requirement Levels"</span>, <time datetime="1997-03" class="refDate">March 1997</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc2119">https://www.rfc-editor.org/rfc/rfc2119</a>&gt;</span>. </dd>
+<dd class="break"></dd>
 <dt id="RFC5705">[RFC5705]</dt>
-      <dd>
+        <dd>
 <span class="refAuthor">Rescorla, E.</span>, <span class="refTitle">"Keying Material Exporters for Transport Layer Security (TLS)"</span>, <time datetime="2010-03" class="refDate">March 2010</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc5705">https://www.rfc-editor.org/rfc/rfc5705</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="RFC7662">[RFC7662]</dt>
-      <dd>
+        <dd>
 <span class="refAuthor">Richer, J.</span>, <span class="refTitle">"OAuth 2.0 Token Introspection"</span>, <time datetime="2015-10" class="refDate">October 2015</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc7662">https://www.rfc-editor.org/rfc/rfc7662</a>&gt;</span>. </dd>
 <dd class="break"></dd>
+<dt id="RFC7800">[RFC7800]</dt>
+        <dd>
+<span class="refAuthor">Jones, M.</span>, <span class="refAuthor">Bradley, J.</span>, and <span class="refAuthor">H. Tschofenig</span>, <span class="refTitle">"Proof-of-Possession Key Semantics for JSON Web Tokens (JWTs)"</span>, <time datetime="2016-04" class="refDate">April 2016</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc7800">https://www.rfc-editor.org/rfc/rfc7800</a>&gt;</span>. </dd>
+<dd class="break"></dd>
 <dt id="RFC8174">[RFC8174]</dt>
-      <dd>
+        <dd>
 <span class="refAuthor">Leiba, B.</span>, <span class="refTitle">"Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words"</span>, <time datetime="2017-05" class="refDate">May 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc8174">https://www.rfc-editor.org/rfc/rfc8174</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8446">[RFC8446]</dt>
+        <dd>
+<span class="refAuthor">Rescorla, E.</span>, <span class="refTitle">"The Transport Layer Security (TLS) Protocol Version 1.3"</span>, <time datetime="2018-08" class="refDate">August 2018</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc8446">https://www.rfc-editor.org/rfc/rfc8446</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8693">[RFC8693]</dt>
+        <dd>
+<span class="refAuthor">Jones, M.</span>, <span class="refAuthor">Nadalin, A.</span>, <span class="refAuthor">Campbell, B.</span>, <span class="refAuthor">Bradley, J.</span>, and <span class="refAuthor">C. Mortimore</span>, <span class="refTitle">"OAuth 2.0 Token Exchange"</span>, <time datetime="2020-01" class="refDate">January 2020</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc8693">https://www.rfc-editor.org/rfc/rfc8693</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8705">[RFC8705]</dt>
+        <dd>
+<span class="refAuthor">Campbell, B.</span>, <span class="refAuthor">Bradley, J.</span>, <span class="refAuthor">Sakimura, N.</span>, and <span class="refAuthor">T. Lodderstedt</span>, <span class="refTitle">"OAuth 2.0 Mutual-TLS Client Authentication and Certificate-Bound Access Tokens"</span>, <time datetime="2020-02" class="refDate">February 2020</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc8705">https://www.rfc-editor.org/rfc/rfc8705</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="RFC9449">[RFC9449]</dt>
       <dd>
 <span class="refAuthor">Fett, D.</span>, <span class="refAuthor">Campbell, B.</span>, <span class="refAuthor">Bradley, J.</span>, <span class="refAuthor">Lodderstedt, T.</span>, <span class="refAuthor">Jones, M.</span>, and <span class="refAuthor">D. Waite</span>, <span class="refTitle">"OAuth 2.0 Demonstrating Proof of Possession (DPoP)"</span>, <time datetime="2023-09" class="refDate">September 2023</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc9449">https://www.rfc-editor.org/rfc/rfc9449</a>&gt;</span>. </dd>
 <dd class="break"></dd>
-<dt id="RFC8446">[RFC8446]</dt>
-      <dd>
-<span class="refAuthor">Rescorla, E.</span>, <span class="refTitle">"The Transport Layer Security (TLS) Protocol Version 1.3"</span>, <time datetime="2018-08" class="refDate">August 2018</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc8446">https://www.rfc-editor.org/rfc/rfc8446</a>&gt;</span>. </dd>
-<dd class="break"></dd>
-<dt id="RFC7800">[RFC7800]</dt>
-      <dd>
-<span class="refAuthor">Jones, M.</span>, <span class="refAuthor">Bradley, J.</span>, and <span class="refAuthor">H. Tschofenig</span>, <span class="refTitle">"Proof-of-Possession Key Semantics for JSON Web Tokens (JWTs)"</span>, <time datetime="2016-04" class="refDate">April 2016</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc7800">https://www.rfc-editor.org/rfc/rfc7800</a>&gt;</span>. </dd>
-<dd class="break"></dd>
-<dt id="RFC8693">[RFC8693]</dt>
-      <dd>
-<span class="refAuthor">Jones, M.</span>, <span class="refAuthor">Nadalin, A.</span>, <span class="refAuthor">Campbell, B.</span>, <span class="refAuthor">Bradley, J.</span>, and <span class="refAuthor">C. Mortimore</span>, <span class="refTitle">"OAuth 2.0 Token Exchange"</span>, <time datetime="2020-01" class="refDate">January 2020</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc8693">https://www.rfc-editor.org/rfc/rfc8693</a>&gt;</span>. </dd>
-<dd class="break"></dd>
-<dt id="RFC8705">[RFC8705]</dt>
-      <dd>
-<span class="refAuthor">Campbell, B.</span>, <span class="refAuthor">Bradley, J.</span>, <span class="refAuthor">Sakimura, N.</span>, and <span class="refAuthor">T. Lodderstedt</span>, <span class="refTitle">"OAuth 2.0 Mutual-TLS Client Authentication and Certificate-Bound Access Tokens"</span>, <time datetime="2020-02" class="refDate">February 2020</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc8705">https://www.rfc-editor.org/rfc/rfc8705</a>&gt;</span>. </dd>
-<dd class="break"></dd>
-<dt id="RFC2119">[RFC2119]</dt>
-    <dd>
-<span class="refAuthor">Bradner, S.</span>, <span class="refTitle">"Key words for use in RFCs to Indicate Requirement Levels"</span>, <time datetime="1997-03" class="refDate">March 1997</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc2119">https://www.rfc-editor.org/rfc/rfc2119</a>&gt;</span>. </dd>
-<dd class="break"></dd>
 </dl>
 </section>
-<section id="section-9">
-      <h2 id="name-informative-references">
-<a href="#section-9" class="section-number selfRef">9. </a><a href="#name-informative-references" class="section-name selfRef">Informative References</a>
-      </h2>
+<section id="section-8.2">
+        <h3 id="name-informative-references">
+<a href="#section-8.2" class="section-number selfRef">8.2. </a><a href="#name-informative-references" class="section-name selfRef">Informative References</a>
+        </h3>
 <dl class="references">
-<dt id="I-D.ietf-wimse-s2s-protocol">[I-D.ietf-wimse-s2s-protocol]</dt>
-      <dd>
-<span class="refAuthor">Howard, P.</span>, <span class="refTitle">"WIMSE Service to Service Authentication"</span>, <time datetime="2024-10-21" class="refDate">21 October 2024</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-ietf-wimse-s2s-protocol">https://datatracker.ietf.org/doc/html/draft-ietf-wimse-s2s-protocol</a>&gt;</span>. </dd>
+<dt id="I-D.draft-klrc-aiagent-auth">[I-D.draft-klrc-aiagent-auth]</dt>
+        <dd>
+<span class="refAuthor">Kohno, K.</span>, <span class="refAuthor">Lodderstedt, L.</span>, <span class="refAuthor">Ranise, R.</span>, and <span class="refAuthor">C. Casati</span>, <span class="refTitle">"AI Agent Authentication and Authorization Framework"</span>, <time datetime="2026-06" class="refDate">June 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-klrc-aiagent-auth">https://datatracker.ietf.org/doc/html/draft-klrc-aiagent-auth</a>&gt;</span>. </dd>
 <dd class="break"></dd>
-<dt id="RFC9000">[RFC9000]</dt>
-      <dd>
-<span class="refAuthor">Iyengar, J.</span> and <span class="refAuthor">M. Thomson</span>, <span class="refTitle">"QUIC: A UDP-Based Multiplexed and Secure Transport"</span>, <time datetime="2021-05" class="refDate">May 2021</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc9000">https://www.rfc-editor.org/rfc/rfc9000</a>&gt;</span>. </dd>
+<dt id="I-D.draft-mw-oauth-actor-chain">[I-D.draft-mw-oauth-actor-chain]</dt>
+        <dd>
+<span class="refAuthor">Prasad, A.</span>, <span class="refAuthor">Krishnan, R.</span>, <span class="refAuthor">Lopez, D.</span>, and <span class="refAuthor">S. Addepalli</span>, <span class="refTitle">"Cryptographically Verifiable Actor Chains for OAuth 2.0 Token Exchange"</span>, <time datetime="2026-05" class="refDate">May 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-mw-oauth-actor-chain">https://datatracker.ietf.org/doc/html/draft-mw-oauth-actor-chain</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="I-D.draft-mw-wimse-transitive-attestation">[I-D.draft-mw-wimse-transitive-attestation]</dt>
+        <dd>
+<span class="refAuthor">Krishnan, R.</span>, <span class="refTitle">"Transitive Attestation for Sovereign Workloads: A WIMSE Profile"</span>, <time datetime="2026-03" class="refDate">March 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-mw-wimse-transitive-attestation">https://datatracker.ietf.org/doc/html/draft-mw-wimse-transitive-attestation</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="I-D.ietf-oauth-security-topics">[I-D.ietf-oauth-security-topics]</dt>
-      <dd>
+        <dd>
 <span class="refAuthor">Lodderstedt, T.</span>, <span class="refAuthor">Bradley, J.</span>, <span class="refAuthor">Labunets, A.</span>, and <span class="refAuthor">D. Fett</span>, <span class="refTitle">"OAuth 2.0 Security Best Current Practice"</span>, <time datetime="2025-04" class="refDate">April 2025</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics">https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics</a>&gt;</span>. </dd>
 <dd class="break"></dd>
+<dt id="I-D.ietf-wimse-s2s-protocol">[I-D.ietf-wimse-s2s-protocol]</dt>
+        <dd>
+<span class="refAuthor">Howard, P.</span>, <span class="refTitle">"WIMSE Service to Service Authentication"</span>, <time datetime="2024-10-21" class="refDate">21 October 2024</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-ietf-wimse-s2s-protocol">https://datatracker.ietf.org/doc/html/draft-ietf-wimse-s2s-protocol</a>&gt;</span>. </dd>
+<dd class="break"></dd>
 <dt id="RFC8471">[RFC8471]</dt>
-      <dd>
+        <dd>
 <span class="refAuthor">Popov, A.</span>, <span class="refAuthor">Nystrom, M.</span>, <span class="refAuthor">Balfanz, D.</span>, and <span class="refAuthor">J. Hodges</span>, <span class="refTitle">"The Token Binding Protocol Version 1.0"</span>, <time datetime="2018-10" class="refDate">October 2018</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc8471">https://www.rfc-editor.org/rfc/rfc8471</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="RFC8472">[RFC8472]</dt>
-      <dd>
+        <dd>
 <span class="refAuthor">Popov, A.</span>, <span class="refAuthor">Nystrom, M.</span>, and <span class="refAuthor">D. Balfanz</span>, <span class="refTitle">"Transport Layer Security (TLS) Extension for Token Binding Protocol Negotiation"</span>, <time datetime="2018-10" class="refDate">October 2018</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc8472">https://www.rfc-editor.org/rfc/rfc8472</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="RFC8473">[RFC8473]</dt>
-      <dd>
+        <dd>
 <span class="refAuthor">Popov, A.</span>, <span class="refAuthor">Nystrom, M.</span>, <span class="refAuthor">Balfanz, D.</span>, <span class="refAuthor">Harper, N.</span>, and <span class="refAuthor">J. Hodges</span>, <span class="refTitle">"Token Binding over HTTP"</span>, <time datetime="2018-10" class="refDate">October 2018</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc8473">https://www.rfc-editor.org/rfc/rfc8473</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC9000">[RFC9000]</dt>
+        <dd>
+<span class="refAuthor">Iyengar, J.</span> and <span class="refAuthor">M. Thomson</span>, <span class="refTitle">"QUIC: A UDP-Based Multiplexed and Secure Transport"</span>, <time datetime="2021-05" class="refDate">May 2021</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc9000">https://www.rfc-editor.org/rfc/rfc9000</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="RFC9001">[RFC9001]</dt>
       <dd>
 <span class="refAuthor">Thomson, M.</span> and <span class="refAuthor">S. Turner</span>, <span class="refTitle">"Using TLS to Secure QUIC"</span>, <time datetime="2021-05" class="refDate">May 2021</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc9001">https://www.rfc-editor.org/rfc/rfc9001</a>&gt;</span>. </dd>
 <dd class="break"></dd>
-<dt id="I-D.draft-mw-wimse-transitive-attestation">[I-D.draft-mw-wimse-transitive-attestation]</dt>
-    <dd>
-<span class="refAuthor">Krishnan, R.</span>, <span class="refTitle">"Transitive Attestation for Sovereign Workloads: A WIMSE Profile"</span>, <time datetime="2026-03" class="refDate">March 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-mw-wimse-transitive-attestation">https://datatracker.ietf.org/doc/html/draft-mw-wimse-transitive-attestation</a>&gt;</span>. </dd>
-<dd class="break"></dd>
 </dl>
+</section>
 </section>
 <div id="contributors">
 <section id="appendix-A">
@@ -2746,12 +2798,12 @@ Email: jonian.musa@chase.com<a href="#appendix-A-4" class="pilcrow">¶</a></p>
 <a href="#appendix-B.6.1" class="section-number selfRef">B.6.1. </a><a href="#name-connection-lifecycle-manage" class="section-name selfRef">Connection Lifecycle Management</a>
           </h4>
 <p id="appendix-B.6.1-1">Sidecars that implement this specification should handle TLS connection lifecycle events to manage the EKM and proof caches correctly. A typical implementation uses a layered architecture:<a href="#appendix-B.6.1-1" class="pilcrow">¶</a></p>
-<ul class="normal">
-<li class="normal" id="appendix-B.6.1-2.1">
-              <p id="appendix-B.6.1-2.1.1"><strong>Connection-level layer</strong> (e.g., a network filter or transport callback): Derives the EKM when a new mTLS connection is established and stores it in connection-scoped state. Registers a callback for connection close events.<a href="#appendix-B.6.1-2.1.1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="appendix-B.6.1-2.1">
+              <strong>Connection-level layer</strong> (e.g., a network filter or transport callback): Derives the EKM when a new mTLS connection is established and stores it in connection-scoped state. Registers a callback for connection close events.<a href="#appendix-B.6.1-2.1" class="pilcrow">¶</a>
 </li>
-            <li class="normal" id="appendix-B.6.1-2.2">
-              <p id="appendix-B.6.1-2.2.1"><strong>Request-level layer</strong> (e.g., an HTTP filter): Reads the cached EKM from the connection-scoped state, constructs or retrieves the cached proof for each token, and injects the <code>Session-Binding-Proof</code> header into outbound requests.<a href="#appendix-B.6.1-2.2.1" class="pilcrow">¶</a></p>
+            <li class="compact" id="appendix-B.6.1-2.2">
+              <strong>Request-level layer</strong> (e.g., an HTTP filter): Reads the cached EKM from the connection-scoped state, constructs or retrieves the cached proof for each token, and injects the <code>Session-Binding-Proof</code> header into outbound requests.<a href="#appendix-B.6.1-2.2" class="pilcrow">¶</a>
 </li>
           </ul>
 <p id="appendix-B.6.1-3">When a TLS connection terminates, all connection-scoped state — including the EKM and all cached proofs for that connection — SHOULD be purged automatically. Frameworks that support connection-scoped storage (e.g., per-connection filter state) provide this cleanup naturally without requiring explicit invalidation logic.<a href="#appendix-B.6.1-3" class="pilcrow">¶</a></p>
@@ -2785,18 +2837,14 @@ Email: jonian.musa@chase.com<a href="#appendix-A-4" class="pilcrow">¶</a></p>
         </ol>
 <p id="appendix-C.1-4">The resulting SVID is short-lived (typically between one minute and one hour, depending on deployment policy) and is automatically rotated by the SPIRE agent before expiry.<a href="#appendix-C.1-4" class="pilcrow">¶</a></p>
 <p id="appendix-C.1-5">When a Session-Binding Proof is signed by the private key of a SPIFFE X.509-SVID, the resource server's verification implies the following chain:<a href="#appendix-C.1-5" class="pilcrow">¶</a></p>
-<ul class="normal">
-<li class="normal" id="appendix-C.1-6.1">
-            <p id="appendix-C.1-6.1.1">The access token was presented on a specific TLS connection (EKM binding).<a href="#appendix-C.1-6.1.1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="appendix-C.1-6.1">The access token was presented on a specific TLS connection (EKM binding).<a href="#appendix-C.1-6.1" class="pilcrow">¶</a>
 </li>
-          <li class="normal" id="appendix-C.1-6.2">
-            <p id="appendix-C.1-6.2.1">That connection was established by the workload whose private key signed the proof.<a href="#appendix-C.1-6.2.1" class="pilcrow">¶</a></p>
+          <li class="compact" id="appendix-C.1-6.2">That connection was established by the workload whose private key signed the proof.<a href="#appendix-C.1-6.2" class="pilcrow">¶</a>
 </li>
-          <li class="normal" id="appendix-C.1-6.3">
-            <p id="appendix-C.1-6.3.1">That workload was attested by a SPIRE agent as running on an attested node.<a href="#appendix-C.1-6.3.1" class="pilcrow">¶</a></p>
+          <li class="compact" id="appendix-C.1-6.3">That workload was attested by a SPIRE agent as running on an attested node.<a href="#appendix-C.1-6.3" class="pilcrow">¶</a>
 </li>
-          <li class="normal" id="appendix-C.1-6.4">
-            <p id="appendix-C.1-6.4.1">The SVID was valid and within its short-lived issuance window at the time of proof construction.<a href="#appendix-C.1-6.4.1" class="pilcrow">¶</a></p>
+          <li class="compact" id="appendix-C.1-6.4">The SVID was valid and within its short-lived issuance window at the time of proof construction.<a href="#appendix-C.1-6.4" class="pilcrow">¶</a>
 </li>
         </ul>
 <p id="appendix-C.1-7">This property — authorization bound to attested workload identity — is not achievable with DPoP, whose key has no provenance beyond self-generation, or with RFC 8705 alone, which binds to a certificate thumbprint but does not constrain how the certificate was issued or how long it has been valid. The combination of this specification with SPIFFE/SPIRE delivers identity-rooted proof of possession: the binding key is not "a key the client generated" but "a key issued to a specific attested workload through a verifiable trust chain."<a href="#appendix-C.1-7" class="pilcrow">¶</a></p>
@@ -2899,12 +2947,12 @@ Email: jonian.musa@chase.com<a href="#appendix-A-4" class="pilcrow">¶</a></p>
         </h3>
 <p id="appendix-C.3-1">SPIFFE X.509-SVIDs and WIMSE Workload Identity Tokens (WITs) serve the same purpose — carrying attested workload identity — through different credential formats. This specification is compatible with both.<a href="#appendix-C.3-1" class="pilcrow">¶</a></p>
 <p id="appendix-C.3-2">When WIMSE WIT/WPT is used alongside this specification in a workload-to-workload flow, the two mechanisms address complementary questions at different layers:<a href="#appendix-C.3-2" class="pilcrow">¶</a></p>
-<ul class="normal">
-<li class="normal" id="appendix-C.3-3.1">
-            <p id="appendix-C.3-3.1.1"><strong>WIMSE WIT/WPT</strong>: "Is this workload who it claims to be, and is this the workload that holds the corresponding private key?" (application-layer identity assertion and per-request proof of possession)<a href="#appendix-C.3-3.1.1" class="pilcrow">¶</a></p>
+<ul class="compact">
+<li class="compact" id="appendix-C.3-3.1">
+            <strong>WIMSE WIT/WPT</strong>: "Is this workload who it claims to be, and is this the workload that holds the corresponding private key?" (application-layer identity assertion and per-request proof of possession)<a href="#appendix-C.3-3.1" class="pilcrow">¶</a>
 </li>
-          <li class="normal" id="appendix-C.3-3.2">
-            <p id="appendix-C.3-3.2.1"><strong>This specification</strong>: "Is this OAuth access token being presented on the TLS connection that this workload authenticated?" (TLS-channel-level token binding)<a href="#appendix-C.3-3.2.1" class="pilcrow">¶</a></p>
+          <li class="compact" id="appendix-C.3-3.2">
+            <strong>This specification</strong>: "Is this OAuth access token being presented on the TLS connection that this workload authenticated?" (TLS-channel-level token binding)<a href="#appendix-C.3-3.2" class="pilcrow">¶</a>
 </li>
         </ul>
 <p id="appendix-C.3-4">Together they close the complete chain: workload identity is asserted and proven at the application layer (WIT/WPT), and the OAuth authorization token is cryptographically bound to the specific connection that workload established (this specification). Neither mechanism alone provides both properties.<a href="#appendix-C.3-4" class="pilcrow">¶</a></p>
