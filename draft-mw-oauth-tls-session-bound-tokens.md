@@ -414,6 +414,61 @@ The Transitive Attestation profile [@I-D.draft-mw-wimse-transitive-attestation] 
 
 This specification does not modify the token exchange protocol itself. The authorization server's token exchange endpoint continues to operate as specified in [@!RFC8693]. The session binding is applied to the *resulting* access token through the `cnf` claim. While this specification is applicable to any OAuth 2.0 access token, RFC 8693 Token Exchange is a primary motivator: each hop in a delegation chain produces a new bearer token, and session binding contains the blast radius of any single token compromise to the specific TLS connection on which it is presented.
 
+### Multi-Hop Delegation and Prior-Hop Verification
+
+When this specification is used with actor-chain token exchange, the
+Session-Binding Proof for each hop is verified by the recipient of
+that hop.  For example, if A presents a token to B and B later
+exchanges that token for a successor token targeted to C, B (or a
+verifier co-located with B) verifies the A-to-B Session-Binding Proof
+before using the inbound token as an RFC 8693 `subject_token`.  B then
+generates a new Session-Binding Proof for its outbound token on the
+B-to-C connection, as specified in (#session-binding-proof-format).
+
+The Authorization Server handling B's exchange request can verify that
+the inbound token carries the expected `cnf` claim (certificate
+thumbprint and `tls_exp` label) and that B is the intended recipient,
+and can enforce policy governing successor-token issuance.  However,
+it cannot independently recompute the prior-hop TLS Exporter value
+because it is not an endpoint of the A-to-B connection.
+
+Where Authorization-Server-visible evidence of prior-hop presentation
+is required, deployments MAY require B to submit a signed confirmation
+that the inbound token and its Session-Binding Proof were verified
+before chain extension (that is, before a successor token is issued).
+This confirmation corresponds to the step proof defined in
+[@I-D.draft-mw-oauth-actor-chain] for verified-profile deployments;
+the two mechanisms are designed to be used together in high-assurance
+multi-hop architectures.
+
+## Relationship to Agentic AI Authentication Frameworks
+
+Emerging frameworks for agentic AI authentication, such as
+[@I-D.draft-klrc-aiagent-auth], compose existing standards — WIMSE
+Workload Proof Tokens (WPT), HTTP Message Signatures, and RFC 8693
+Token Exchange — to address the identity and delegation needs of
+autonomous agents.  These frameworks recommend application-layer
+proof-of-possession mechanisms, of which DPoP [@!RFC9449] is the
+most widely deployed example, where the agent signs a per-request
+JWT with a private key to demonstrate token binding.
+
+For direct mTLS deployments, TLS session binding provides stronger
+protection than application-layer PoP.  WPT and DPoP bind the token
+to a key: an attacker who exfiltrates both the token and the key
+material can replay the token from any connection.  TLS session
+binding binds the token to the specific TLS connection via the TLS
+Exporter value, which cannot be reconstructed outside that connection.
+The per-request cost advantage over DPoP and WPT is described in
+(#relationship-to-rfc-9449-dpop).
+
+The two approaches are complementary.  HTTP Message Signatures, as
+recommended by such frameworks, remain appropriate for flows traversing
+TLS-terminating intermediaries where EKM derivation is unavailable
+end-to-end — a scenario outside the scope of this specification
+(see (#remote-tls-termination-out-of-scope)).  Deployments MAY use
+TLS session binding for direct mTLS connections and HTTP Message
+Signatures for cross-intermediary legs of the same workflow.
+
 # Deployment Scope
 
 ## Co-Located TLS Termination (Supported)
@@ -1010,6 +1065,28 @@ Together they close the complete chain: workload identity is asserted and proven
 </reference>
 
 
+
+<reference anchor="I-D.draft-mw-oauth-actor-chain" target="https://datatracker.ietf.org/doc/html/draft-mw-oauth-actor-chain">
+  <front>
+    <title>Cryptographically Verifiable Actor Chains for OAuth 2.0 Token Exchange</title>
+    <author initials="A." surname="Prasad" fullname="A Prasad"/>
+    <author initials="R." surname="Krishnan" fullname="Ram Krishnan"/>
+    <author initials="D." surname="Lopez" fullname="Diego R. Lopez"/>
+    <author initials="S." surname="Addepalli" fullname="Srinivasa Addepalli"/>
+    <date month="May" year="2026"/>
+  </front>
+</reference>
+
+<reference anchor="I-D.draft-klrc-aiagent-auth" target="https://datatracker.ietf.org/doc/html/draft-klrc-aiagent-auth">
+  <front>
+    <title>AI Agent Authentication and Authorization Framework</title>
+    <author initials="K." surname="Kohno" fullname="K. Kohno"/>
+    <author initials="L." surname="Lodderstedt" fullname="Torsten Lodderstedt"/>
+    <author initials="R." surname="Ranise" fullname="S. Ranise"/>
+    <author initials="C." surname="Casati" fullname="F. Casati"/>
+    <date month="June" year="2026"/>
+  </front>
+</reference>
 
 <reference anchor="I-D.draft-mw-wimse-transitive-attestation" target="https://datatracker.ietf.org/doc/html/draft-mw-wimse-transitive-attestation">
   <front>
